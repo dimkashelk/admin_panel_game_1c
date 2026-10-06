@@ -9,6 +9,7 @@ from collections import Counter
 from pathlib import Path
 import sys
 import uuid
+import re
 
 import yaml
 
@@ -31,7 +32,7 @@ UniqueKeyLoader.add_constructor(
     yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, unique_mapping
 )
 
-PRIMITIVES = {"Строка", "Число", "Булево", "Дата", "ДатаВремя", "Момент"}
+PRIMITIVES = {"Строка", "Число", "Булево", "Дата", "ДатаВремя", "Момент", "Ууид"}
 SYSTEM_REFERENCES = {"Пользователи.Ссылка", "ДвоичныйОбъект.Ссылка"}
 COLLECTIONS = (
     "Реквизиты", "Измерения", "Ресурсы", "ТабличныеЧасти", "Элементы",
@@ -91,7 +92,10 @@ def check(root):
                 ids[identifier] = path.relative_to(root)
             for section in COLLECTIONS:
                 members = node.get(section, [])
-                names = [member.get("Имя") for member in members]
+                # UI fragments may contain references to commands rather than mappings.
+                if not isinstance(members, list):
+                    continue
+                names = [member.get("Имя") for member in members if isinstance(member, dict)]
                 for name, count in Counter(names).items():
                     if count > 1:
                         fail(path, f"Duplicate name in {section}: {name}")
@@ -130,6 +134,9 @@ def check(root):
         owner = path.parent.name
         if owner not in subsystems:
             fail(path, f"Object outside a subsystem: {owner}")
+        if kind == "КомпонентИнтерфейса":
+            # UI type grammar is owned by xbsl-form-add, not the metadata type checker.
+            continue
         if kind in ("Справочник", "Документ"):
             system_names = {"Наименование", "Код"} if kind == "Справочник" else {"Дата", "Номер"}
             attributes = obj.get("Реквизиты", [])
@@ -158,7 +165,14 @@ def check(root):
             if "Тип" not in node:
                 continue
             type_name = node["Тип"]
+            if not isinstance(type_name, str):
+                fail(path, "Type must be a string")
+                continue
             base = type_name.removesuffix("?")
+            # DTO fields may contain typed arrays and other documented collections.
+            match = re.fullmatch(r"(?:Массив|ЧитаемыйМассив|ЧитаемаяКоллекция)<(.+)>", base)
+            if match:
+                base = match[1].removesuffix("?")
             if base == "Строка" and node.get("МаксимальнаяДлина", 0) > 1000:
                 fail(path, f"String maximum exceeds platform limit 1000: {node.get('Имя')}")
             if base in PRIMITIVES or base in SYSTEM_REFERENCES:
@@ -172,13 +186,13 @@ def check(root):
             if is_reference and target["ВидЭлемента"] not in {"Справочник", "Документ"}:
                 fail(path, f"Reference to an object without a link type: {type_name}")
             if not is_reference:
-                if target["ВидЭлемента"] != "Перечисление":
-                    fail(path, f"Expected enumeration type: {type_name}")
-                else:
+                if target["ВидЭлемента"] not in {"Перечисление", "Структура"}:
+                    fail(path, f"Expected enumeration or structure type: {type_name}")
+                elif target["ВидЭлемента"] == "Перечисление":
                     default = node.get("ЗначениеПоУмолчанию")
                     # YAML stores the member name; XBSL uses Type.Member syntax.
                     values = {element["Имя"] for element in target["Элементы"]}
-                    if not type_name.endswith("?") and default not in values:
+                    if kind != "Структура" and not type_name.endswith("?") and default not in values:
                         fail(path, f"Enumeration default missing or invalid: {node.get('Имя')}")
                     if default is not None and default not in values:
                         fail(path, f"Unknown enumeration value: {default}")
@@ -190,6 +204,14 @@ def check(root):
                     fail(path, f"Missing Импорт: {other_owner}")
                 if other_owner not in graph.get(owner, []):
                     fail(path, f"Missing subsystem Использование: {other_owner}")
+
+        if kind == "ОбщийМодуль" and not path.with_suffix(".xbsl").is_file():
+            fail(path, "Common module is missing its XBSL companion")
+        if kind in {"Справочник", "Документ"}:
+            for view in ("Объект", "Список"):
+                form = obj.get("Интерфейс", {}).get(view, {}).get("Форма")
+                if form and (form not in objects or objects[form][1]["ВидЭлемента"] != "КомпонентИнтерфейса"):
+                    fail(path, f"Unknown interface form: {form}")
 
     # A game's frozen settings must retain the scenario's structure, with separate IDs.
     if "Игры" in objects and "СценарииИгры" in objects:
