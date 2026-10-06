@@ -96,7 +96,7 @@ def check(root):
                 if not isinstance(members, list):
                     continue
                 names = [member.get("Имя") for member in members if isinstance(member, dict)]
-                for name, count in Counter(names).items():
+                for name, count in Counter(n for n in names if n is not None).items():
                     if count > 1:
                         fail(path, f"Duplicate name in {section}: {name}")
 

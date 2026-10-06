@@ -5,6 +5,7 @@
 Элементы:
 - Ид: eec8d269-5e26-4ddb-93c6-e3f2b6faa5ed
   Имя: HttpApi
+  ПоУмолчанию: Истина
 - Ид: 8665ee00-a31e-4a59-ae7e-36dbdbf4a3d7
   Имя: OData
 - Ид: f3a5f099-d389-4bab-8f2c-5c60d41a22f9

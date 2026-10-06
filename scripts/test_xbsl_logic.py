@@ -104,6 +104,9 @@ def expression(text):
     text = re.sub(r'!(?!=)', ' not ', text)
     for old, new in [('&&', ' and '), ('||', ' or '), ('Истина', 'True'), ('Ложь', 'False'), ('Неопределено', 'None')]:
         text = text.replace(old, new)
+    text = re.sub(r'\bи\b', 'and', text)
+    text = re.sub(r'\bили\b', 'or', text)
+    text = re.sub(r'\bне\b', 'not', text)
     text = ternary(text)
     text = re.sub(r'\(([^()]+)\)\s*->\s*(.+)', r'(lambda \1: \2)', text)
     tree = ast.parse(text.strip(), mode='eval')
