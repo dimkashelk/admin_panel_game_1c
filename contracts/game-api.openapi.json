@@ -1,0 +1,1590 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "API обмена экономической игры с ERP",
+    "version": "0.1.0-design",
+    "description": "Проект прикладного HTTP API Элемента 10.0. Реализация отсутствует. Это не спецификация стандартного OData ERP. Транспорт OData адаптируется к тем же предметным данным и операциям."
+  },
+  "servers": [
+    {
+      "url": "/api/game/v1",
+      "description": "Относительно адреса приложения Элемента; префикс /api добавляет платформа."
+    }
+  ],
+  "security": [
+    {
+      "platformBearer": []
+    }
+  ],
+  "paths": {
+    "/bindings/{bindingId}/context": {
+      "get": {
+        "operationId": "getContext",
+        "summary": "Получить доступный контекст игры",
+        "parameters": [
+          {
+            "name": "bindingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Назначенная аутентифицированному сервису привязка к участнику игры."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешный результат; для повторного POST возвращается прежний ресурс.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Context"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Требуется аутентификация.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Нет прав на привязку или операцию.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Несовместимое состояние, старый токен или конфликт ключа повтора.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Неверные или неполные данные.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Временная недоступность.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bindings/{bindingId}/snapshots": {
+      "post": {
+        "operationId": "submitSnapshot",
+        "summary": "Передать снимок ERP",
+        "parameters": [
+          {
+            "name": "bindingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Назначенная аутентифицированному сервису привязка к участнику игры."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Совпадает с messageId; повтор с иным маршрутом или телом отклоняется."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешный результат; для повторного POST возвращается прежний ресурс.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Accepted"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Требуется аутентификация.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Нет прав на привязку или операцию.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Несовместимое состояние, старый токен или конфликт ключа повтора.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Неверные или неполные данные.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Временная недоступность.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SnapshotRequest"
+              },
+              "example": {
+                "messageId": "f3247bb9-9192-4f73-9a58-0ed88e45d3ab",
+                "phaseToken": "d9b326e9-8332-4647-803d-9e687ed4ad6a",
+                "roundNumber": 1,
+                "sourceVersion": "erp-freeze-1",
+                "capturedAt": "2026-10-06T15:00:00+03:00",
+                "kind": "frozen",
+                "currency": "RUB",
+                "offers": [
+                  {
+                    "productCode": "CityRide",
+                    "price": "52000.00",
+                    "availableQuantity": 30
+                  },
+                  {
+                    "productCode": "SportDrive",
+                    "price": "82000.00",
+                    "availableQuantity": 10
+                  },
+                  {
+                    "productCode": "CargoMax",
+                    "price": "90000.00",
+                    "availableQuantity": 25
+                  },
+                  {
+                    "productCode": "TourPro",
+                    "price": "88000.00",
+                    "availableQuantity": 12
+                  }
+                ],
+                "balances": []
+              }
+            }
+          }
+        },
+        "description": "Для final обязателен financials; для frozen и final требуется подтверждённая фиксация источника. Набор offers должен содержать все продукты текущей игры без повторов. Monitoring не является входом окончательного расчёта."
+      }
+    },
+    "/bindings/{bindingId}/readiness": {
+      "post": {
+        "operationId": "submitReadiness",
+        "summary": "Передать готовность участника",
+        "parameters": [
+          {
+            "name": "bindingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Назначенная аутентифицированному сервису привязка к участнику игры."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Совпадает с messageId; повтор с иным маршрутом или телом отклоняется."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешный результат; для повторного POST возвращается прежний ресурс.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Accepted"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Требуется аутентификация.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Нет прав на привязку или операцию.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Несовместимое состояние, старый токен или конфликт ключа повтора.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Неверные или неполные данные.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Временная недоступность.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReadinessRequest"
+              }
+            }
+          }
+        },
+        "description": "snapshotId — resourceId ранее принятого снимка того же участника, раунда и токена. Старый снимок и неподтверждённая фиксация отклоняются."
+      }
+    },
+    "/bindings/{bindingId}/commands": {
+      "get": {
+        "operationId": "getCommands",
+        "summary": "Получить неподтверждённые команды по порядку",
+        "parameters": [
+          {
+            "name": "bindingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Назначенная аутентифицированному сервису привязка к участнику игры."
+          },
+          {
+            "name": "afterSequence",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешный результат; для повторного POST возвращается прежний ресурс.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Требуется аутентификация.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Нет прав на привязку или операцию.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Несовместимое состояние, старый токен или конфликт ключа повтора.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Неверные или неполные данные.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Временная недоступность.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "description": "GET не подтверждает выполнение. Предыдущую неподтверждённую команду нельзя пропустить по afterSequence. Один исполнитель ERP последовательно обрабатывает очередь участника."
+      }
+    },
+    "/bindings/{bindingId}/commands/{commandId}/receipt": {
+      "post": {
+        "operationId": "submitCommandReceipt",
+        "summary": "Подтвердить результат исполнения команды",
+        "parameters": [
+          {
+            "name": "bindingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Назначенная аутентифицированному сервису привязка к участнику игры."
+          },
+          {
+            "name": "commandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Совпадает с messageId; повтор с иным маршрутом или телом отклоняется."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешный результат; для повторного POST возвращается прежний ресурс.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Accepted"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Требуется аутентификация.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Нет прав на привязку или операцию.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Несовместимое состояние, старый токен или конфликт ключа повтора.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Неверные или неполные данные.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Временная недоступность.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommandReceiptRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bindings/{bindingId}/sales-events": {
+      "post": {
+        "operationId": "submitSalesEvent",
+        "summary": "Передать состояние реализации и связанных оплат",
+        "parameters": [
+          {
+            "name": "bindingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Назначенная аутентифицированному сервису привязка к участнику игры."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Совпадает с messageId; повтор с иным маршрутом или телом отклоняется."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешный результат; для повторного POST возвращается прежний ресурс.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Accepted"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Требуется аутентификация.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Нет прав на привязку или операцию.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Несовместимое состояние, старый токен или конфликт ключа повтора.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Неверные или неполные данные.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Временная недоступность.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalesEventRequest"
+              }
+            }
+          }
+        },
+        "description": "Передаётся актуальное накопленное состояние конкретной реализации с монотонной stateVersion, а не дельта для повторного суммирования. Сервер сверяет заказ, расчёт, цены и платежи. После финализации требуется отдельная процедура исправления."
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "platformBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Штатная аутентификация платформы; точный способ получения токена подтвердить на выбранной сборке."
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "message": {
+            "type": "string"
+          },
+          "correlationId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "correlationId"
+        ],
+        "additionalProperties": false
+      },
+      "Accepted": {
+        "type": "object",
+        "properties": {
+          "messageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "resourceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "replayed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "messageId",
+          "resourceId",
+          "replayed"
+        ],
+        "additionalProperties": false
+      },
+      "Context": {
+        "type": "object",
+        "properties": {
+          "gameId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "participantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "roundNumber": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "phaseCode": {
+            "type": "string",
+            "enum": [
+              "initialization",
+              "initial_sales",
+              "planning",
+              "purchasing",
+              "production",
+              "sales",
+              "analysis"
+            ]
+          },
+          "phaseToken": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "stateVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "gameState": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "preparing",
+              "running",
+              "paused",
+              "completed",
+              "cancelled"
+            ]
+          },
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "consistentSnapshot",
+                "phaseGuard",
+                "idempotentCommands",
+                "salesFacts",
+                "finalFinancials"
+              ]
+            },
+            "minItems": 0
+          }
+        },
+        "required": [
+          "gameId",
+          "participantId",
+          "roundNumber",
+          "phaseCode",
+          "phaseToken",
+          "stateVersion",
+          "gameState",
+          "capabilities"
+        ],
+        "additionalProperties": false
+      },
+      "Offer": {
+        "type": "object",
+        "properties": {
+          "productCode": {
+            "type": "string",
+            "enum": [
+              "CityRide",
+              "SportDrive",
+              "CargoMax",
+              "TourPro"
+            ]
+          },
+          "price": {
+            "type": "string",
+            "pattern": "^(?!0\\.00$)(0|[1-9][0-9]*)\\.[0-9]{2}$",
+            "description": "Цена должна быть положительной; диапазон проверяет сервер по сценарию."
+          },
+          "availableQuantity": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "productCode",
+          "price",
+          "availableQuantity"
+        ],
+        "additionalProperties": false
+      },
+      "Balance": {
+        "type": "object",
+        "properties": {
+          "itemCode": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "quantity": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]{1,6})?$"
+          },
+          "unitCode": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "warehouseId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "characteristicId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "itemCode",
+          "quantity",
+          "unitCode",
+          "warehouseId"
+        ],
+        "additionalProperties": false
+      },
+      "Financials": {
+        "type": "object",
+        "properties": {
+          "cash": {
+            "type": "string",
+            "pattern": "^-?(0|[1-9][0-9]*)\\.[0-9]{2}$"
+          },
+          "profit": {
+            "type": "string",
+            "pattern": "^-?(0|[1-9][0-9]*)\\.[0-9]{2}$"
+          },
+          "customerDebt": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)\\.[0-9]{2}$",
+            "description": "Десятичная сумма в строке, два знака после точки."
+          },
+          "supplierDebt": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)\\.[0-9]{2}$",
+            "description": "Десятичная сумма в строке, два знака после точки."
+          },
+          "monthClosed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "cash",
+          "profit",
+          "customerDebt",
+          "supplierDebt",
+          "monthClosed"
+        ],
+        "additionalProperties": false
+      },
+      "SnapshotRequest": {
+        "type": "object",
+        "properties": {
+          "messageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "phaseToken": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "roundNumber": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "sourceVersion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "capturedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "monitoring",
+              "frozen",
+              "final"
+            ]
+          },
+          "currency": {
+            "type": "string",
+            "const": "RUB"
+          },
+          "offers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Offer"
+            },
+            "minItems": 0
+          },
+          "balances": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Balance"
+            },
+            "minItems": 0
+          },
+          "financials": {
+            "$ref": "#/components/schemas/Financials"
+          }
+        },
+        "required": [
+          "messageId",
+          "phaseToken",
+          "roundNumber",
+          "sourceVersion",
+          "capturedAt",
+          "kind",
+          "currency",
+          "offers",
+          "balances"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "final"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            },
+            "then": {
+              "required": [
+                "financials"
+              ]
+            }
+          }
+        ]
+      },
+      "ReadinessRequest": {
+        "type": "object",
+        "properties": {
+          "messageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "phaseToken": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "roundNumber": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "snapshotId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ready": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "messageId",
+          "phaseToken",
+          "roundNumber",
+          "snapshotId",
+          "ready"
+        ],
+        "additionalProperties": false
+      },
+      "CommandReceiptRequest": {
+        "type": "object",
+        "properties": {
+          "messageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "processing",
+              "completed",
+              "failed"
+            ]
+          },
+          "phaseToken": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "erpDocumentIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "minItems": 0
+          },
+          "snapshotId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "errorCode": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "errorMessage": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "messageId",
+          "status",
+          "phaseToken",
+          "erpDocumentIds"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "failed"
+                }
+              },
+              "required": [
+                "status"
+              ]
+            },
+            "then": {
+              "required": [
+                "errorCode",
+                "errorMessage"
+              ]
+            }
+          }
+        ]
+      },
+      "OrderLine": {
+        "type": "object",
+        "properties": {
+          "productCode": {
+            "type": "string",
+            "enum": [
+              "CityRide",
+              "SportDrive",
+              "CargoMax",
+              "TourPro"
+            ]
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "unitPrice": {
+            "type": "string",
+            "pattern": "^(?!0\\.00$)(0|[1-9][0-9]*)\\.[0-9]{2}$",
+            "description": "Десятичная сумма в строке, два знака после точки."
+          }
+        },
+        "required": [
+          "productCode",
+          "quantity",
+          "unitPrice"
+        ],
+        "additionalProperties": false
+      },
+      "PrepareGamePayload": {
+        "type": "object",
+        "properties": {
+          "initialCash": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)\\.[0-9]{2}$",
+            "description": "Десятичная сумма в строке, два знака после точки."
+          },
+          "currency": {
+            "type": "string",
+            "const": "RUB"
+          },
+          "balances": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Balance"
+            },
+            "minItems": 0
+          },
+          "seed": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "initialCash",
+          "currency",
+          "balances",
+          "seed"
+        ],
+        "additionalProperties": false
+      },
+      "PhasePayload": {
+        "type": "object",
+        "properties": {
+          "phaseCode": {
+            "type": "string",
+            "enum": [
+              "initialization",
+              "initial_sales",
+              "planning",
+              "purchasing",
+              "production",
+              "sales",
+              "analysis"
+            ]
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "phaseCode"
+        ],
+        "additionalProperties": false
+      },
+      "CreateOrderPayload": {
+        "type": "object",
+        "properties": {
+          "allocationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "externalOrderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "currency": {
+            "type": "string",
+            "const": "RUB"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderLine"
+            },
+            "minItems": 1
+          }
+        },
+        "required": [
+          "allocationId",
+          "externalOrderId",
+          "currency",
+          "lines"
+        ],
+        "additionalProperties": false
+      },
+      "PayRealizationPayload": {
+        "type": "object",
+        "properties": {
+          "erpRealizationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "paymentOperationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "^(?!0\\.00$)(0|[1-9][0-9]*)\\.[0-9]{2}$",
+            "description": "Десятичная сумма в строке, два знака после точки."
+          },
+          "currency": {
+            "type": "string",
+            "const": "RUB"
+          }
+        },
+        "required": [
+          "erpRealizationId",
+          "paymentOperationId",
+          "amount",
+          "currency"
+        ],
+        "additionalProperties": false
+      },
+      "FinalSnapshotPayload": {
+        "type": "object",
+        "properties": {
+          "gameMonth": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$"
+          },
+          "requireClosedMonth": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "gameMonth",
+          "requireClosedMonth"
+        ],
+        "additionalProperties": false
+      },
+      "PausePayload": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "EmptyPayload": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "SalesLine": {
+        "type": "object",
+        "properties": {
+          "productCode": {
+            "type": "string",
+            "enum": [
+              "CityRide",
+              "SportDrive",
+              "CargoMax",
+              "TourPro"
+            ]
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unitPrice": {
+            "type": "string",
+            "pattern": "^(?!0\\.00$)(0|[1-9][0-9]*)\\.[0-9]{2}$",
+            "description": "Десятичная сумма в строке, два знака после точки."
+          }
+        },
+        "required": [
+          "productCode",
+          "quantity",
+          "unitPrice"
+        ],
+        "additionalProperties": false
+      },
+      "PaymentFact": {
+        "type": "object",
+        "properties": {
+          "erpPaymentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]*)\\.[0-9]{2}$",
+            "description": "Десятичная сумма в строке, два знака после точки."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "posted",
+              "reversed"
+            ]
+          }
+        },
+        "required": [
+          "erpPaymentId",
+          "amount",
+          "status"
+        ],
+        "additionalProperties": false
+      },
+      "SalesEventRequest": {
+        "type": "object",
+        "properties": {
+          "messageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "phaseToken": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "roundNumber": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "allocationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "erpOrderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "erpRealizationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "stateVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "capturedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "posted": {
+            "type": "boolean"
+          },
+          "currency": {
+            "type": "string",
+            "const": "RUB"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SalesLine"
+            },
+            "minItems": 1
+          },
+          "payments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PaymentFact"
+            },
+            "minItems": 0
+          }
+        },
+        "required": [
+          "messageId",
+          "phaseToken",
+          "roundNumber",
+          "allocationId",
+          "erpOrderId",
+          "erpRealizationId",
+          "stateVersion",
+          "capturedAt",
+          "posted",
+          "currency",
+          "lines",
+          "payments"
+        ],
+        "additionalProperties": false
+      },
+      "Command": {
+        "type": "object",
+        "properties": {
+          "commandId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sequence": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "phaseToken": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "roundNumber": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "issuedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "prepare_game",
+              "open_phase",
+              "freeze_phase",
+              "create_customer_order",
+              "pay_realization",
+              "request_final_snapshot",
+              "pause_game",
+              "resume_game"
+            ]
+          },
+          "payload": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "commandId",
+          "sequence",
+          "phaseToken",
+          "roundNumber",
+          "issuedAt",
+          "kind",
+          "payload"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "prepare_game"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            },
+            "then": {
+              "properties": {
+                "payload": {
+                  "$ref": "#/components/schemas/PrepareGamePayload"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "open_phase"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            },
+            "then": {
+              "properties": {
+                "payload": {
+                  "$ref": "#/components/schemas/PhasePayload"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "freeze_phase"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            },
+            "then": {
+              "properties": {
+                "payload": {
+                  "$ref": "#/components/schemas/PhasePayload"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "create_customer_order"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            },
+            "then": {
+              "properties": {
+                "payload": {
+                  "$ref": "#/components/schemas/CreateOrderPayload"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "pay_realization"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            },
+            "then": {
+              "properties": {
+                "payload": {
+                  "$ref": "#/components/schemas/PayRealizationPayload"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "request_final_snapshot"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            },
+            "then": {
+              "properties": {
+                "payload": {
+                  "$ref": "#/components/schemas/FinalSnapshotPayload"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "pause_game"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            },
+            "then": {
+              "properties": {
+                "payload": {
+                  "$ref": "#/components/schemas/PausePayload"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "resume_game"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            },
+            "then": {
+              "properties": {
+                "payload": {
+                  "$ref": "#/components/schemas/EmptyPayload"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "CommandsResponse": {
+        "type": "object",
+        "properties": {
+          "commands": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Command"
+            },
+            "minItems": 0
+          },
+          "acknowledgedThroughSequence": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "commands",
+          "acknowledgedThroughSequence"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}
