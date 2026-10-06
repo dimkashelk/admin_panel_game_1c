@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Execute the pure XBSL modules in a deliberately limited local harness.
 
-This translates only the language subset used by the pure market, ratings and finance validation modules.
+This translates only the language subset used by the pure market, ratings,
+finance validation and dashboard/timer modules.
 It does NOT compile Element code, emulate its DB/UI/permissions, or verify its
 numeric implementation. Unsupported syntax fails instead of being skipped.
 """
@@ -98,15 +99,21 @@ class Expressions(ast.NodeTransformer):
 
 def expression(text):
     text = text.strip()
-    text = re.sub(r'<[^<>]+>\[\]', '[]', text)
-    text = re.sub(r'\bновый\s+', '', text)
-    text = re.sub(r'([\w\]\)])!(?!=)', r'\1', text)
-    text = re.sub(r'!(?!=)', ' not ', text)
-    for old, new in [('&&', ' and '), ('||', ' or '), ('Истина', 'True'), ('Ложь', 'False'), ('Неопределено', 'None')]:
-        text = text.replace(old, new)
-    text = re.sub(r'\bи\b', 'and', text)
-    text = re.sub(r'\bили\b', 'or', text)
-    text = re.sub(r'\bне\b', 'not', text)
+    # Translate tokens outside strings so Russian messages remain unchanged.
+    parts = re.split(r'("(?:[^"\\]|\\.)*")', text)
+    for index in range(0, len(parts), 2):
+        code = parts[index]
+        code = re.sub(r'<[^<>]+>\[\]', '[]', code)
+        code = re.sub(r'\bновый\s+', '', code)
+        code = re.sub(r'([\w\]\)])!(?!=)', r'\1', code)
+        code = re.sub(r'!(?!=)', ' not ', code)
+        for old, new in [('&&', ' and '), ('||', ' or '), ('Истина', 'True'), ('Ложь', 'False'), ('Неопределено', 'None')]:
+            code = code.replace(old, new)
+        code = re.sub(r'\bи\b', 'and', code)
+        code = re.sub(r'\bили\b', 'or', code)
+        code = re.sub(r'\bне\b', 'not', code)
+        parts[index] = code
+    text = ''.join(parts)
     text = ternary(text)
     text = re.sub(r'\(([^()]+)\)\s*->\s*(.+)', r'(lambda \1: \2)', text)
     tree = ast.parse(text.strip(), mode='eval')
@@ -159,6 +166,11 @@ def translate(path):
         elif line.startswith('для '):
             name, value = line[4:].split(' из ', 1)
             statement = f'for {name} in {expression(value)}:'
+        elif line == 'попытка':
+            statement = 'try:'
+        elif line.startswith('поймать '):
+            name, _ = line[8:].split(':', 1)
+            statement = f'except Exception as {name.strip()}:'
         elif line == 'возврат':
             statement = 'return'
         elif line.startswith('возврат '):
@@ -218,6 +230,7 @@ CHECKS = load_module('Данные/ПроверкиДанных.xbsl', {})
 MARKET = load_module('Рынок/РасчетРынка.xbsl', {'ПроверкиДанных': CHECKS})
 RATINGS = load_module('Аналитика/Рейтинг.xbsl', {'ПроверкиДанных': CHECKS})
 SELFTEST = load_module('Рынок/ПроверкиРынка.xbsl', {'ПроверкиДанных': CHECKS, 'РасчетРынка': MARKET})
+SUMMARIES = load_module('Управление/СводкиИгры.xbsl', {})
 
 
 def params(**changes):
@@ -348,6 +361,81 @@ class PureLogicTests(unittest.TestCase):
     def sale(qty=5, version=1, payments=()):
         return CHECKS.ФактПродажи(ИдРеализации='invoice-1', Отгружено=Decimal(qty), Цена=Decimal(10),
             Версия=Decimal(version), Платежи=XArray(payments))
+
+
+class DashboardTimerTests(unittest.TestCase):
+    @staticmethod
+    def team(name='Альфа', ready=False, snapshot=None, error=''):
+        return SUMMARIES.СтрокаГотовности(Участник=name, Команда=name,
+            Готов=ready, Снимок=snapshot, Причина=error)
+
+    @staticmethod
+    def panel(status='Идет', teams=(), game='game-1', phase='Производство', round_number=2):
+        return SUMMARIES.СостояниеПульта(Игра=game, Наименование=game,
+            Статус=status, Фаза=phase, НомерРаунда=Decimal(round_number), Участники=XArray(teams))
+
+    def test_only_current_games_and_their_phase_are_returned(self):
+        panels = [self.panel(status=s, game=s) for s in
+            ('Черновик', 'Подготовка', 'Идет', 'Пауза', 'Завершена', 'Отменена')]
+        result = SUMMARIES.СформироватьСводку(XArray(panels))
+        self.assertEqual([row.Статус for row in result.Игры], ['Черновик', 'Подготовка', 'Идет', 'Пауза'])
+        self.assertTrue(all(row.Фаза == 'Производство' and row.НомерРаунда == 2 for row in result.Игры))
+
+    def test_preparation_and_drafts_do_not_report_missing_snapshots(self):
+        result = SUMMARIES.СформироватьСводку(XArray([
+            self.panel(status='Черновик', teams=[self.team()]),
+            self.panel(status='Подготовка', teams=[self.team()])]))
+        self.assertEqual(result.ПроблемныеКоманды, [])
+        self.assertEqual([(g.Готово, g.Всего, g.Ожидают) for g in result.Игры], [(0, 1, 0), (0, 1, 0)])
+
+    def test_readiness_requires_snapshot_and_no_error(self):
+        for ready, snapshot, error, expected in (
+            (True, 'snapshot', '', True), (False, 'snapshot', '', False),
+            (True, None, '', False), (True, 'snapshot', 'Ошибка ERP', False)):
+            with self.subTest(ready=ready, snapshot=snapshot, error=error):
+                self.assertEqual(SUMMARIES.КомандаГотова(ready, snapshot, error), expected)
+
+    def test_problem_reasons_and_counts_match_each_game(self):
+        teams = [self.team('А', True, 's1'), self.team('Б', True),
+            self.team('В', False, 's2'), self.team('Г', True, 's3', 'Нет связи')]
+        result = SUMMARIES.СформироватьСводку(XArray([
+            self.panel(teams=teams), self.panel(status='Пауза', teams=[self.team('Д')], game='game-2')]))
+        self.assertEqual([(g.Готово, g.Всего, g.Ожидают) for g in result.Игры], [(1, 4, 3), (0, 1, 1)])
+        self.assertEqual([(p.Игра, p.Команда, p.Причина) for p in result.ПроблемныеКоманды], [
+            ('game-1', 'Б', 'Снимок текущей фазы не принят'),
+            ('game-1', 'В', 'Команда не подтвердила готовность'),
+            ('game-1', 'Г', 'Нет связи'),
+            ('game-2', 'Д', 'Снимок текущей фазы не принят')])
+        self.assertEqual(SUMMARIES.ПричинаОжидания(True, 's1', ''), '')
+
+    def test_empty_and_all_ready_games_have_no_problems(self):
+        self.assertEqual(SUMMARIES.СформироватьСводку(XArray()).Игры, [])
+        result = SUMMARIES.СформироватьСводку(XArray([self.panel(teams=[self.team(ready=True, snapshot='s1')])]))
+        self.assertEqual(result.ПроблемныеКоманды, [])
+        self.assertEqual(result.Игры[0].Готово, 1)
+
+    def test_countdown_uses_elapsed_time_and_stops_at_zero(self):
+        for elapsed, expected in [('1.2', 63), ('5.9', 59), ('64', 1), ('65', 0), ('1000', 0), ('-20', 65)]:
+            with self.subTest(elapsed=elapsed):
+                self.assertEqual(SUMMARIES.ОстатокПоСостоянию('Идет', True, Decimal(65), Decimal(elapsed)), expected)
+
+    def test_pause_preserves_remainder_and_has_no_warning(self):
+        self.assertEqual(SUMMARIES.ОстатокПоСостоянию('Пауза', True, Decimal(20), Decimal(300)), 20)
+        self.assertEqual(SUMMARIES.ПредупреждениеВремени('Пауза', True, Decimal(0)), '')
+
+    def test_untimed_and_terminal_games_do_not_count_down_or_warn(self):
+        for status, timed in [('Идет', False), ('Пауза', False), ('Черновик', True),
+                              ('Подготовка', True), ('Завершена', True), ('Отменена', True)]:
+            with self.subTest(status=status, timed=timed):
+                self.assertEqual(SUMMARIES.ОстатокПоСостоянию(status, timed, Decimal(100), Decimal(1)), 0)
+                self.assertEqual(SUMMARIES.ПредупреждениеВремени(status, timed, Decimal(0)), '')
+
+    def test_warning_boundary_and_expiration(self):
+        self.assertEqual(SUMMARIES.ПредупреждениеВремени('Идет', True, Decimal(61)), '')
+        for seconds in (60, 1):
+            self.assertIn('не более минуты', SUMMARIES.ПредупреждениеВремени('Идет', True, Decimal(seconds)))
+        for seconds in (0, -1):
+            self.assertIn('Время фазы истекло', SUMMARIES.ПредупреждениеВремени('Идет', True, Decimal(seconds)))
 
 
 if __name__ == '__main__':

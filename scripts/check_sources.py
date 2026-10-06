@@ -43,6 +43,8 @@ for path, source in SOURCES.items():
         fail(path, 'Move query literals from nested object modules to entity managers')
     if re.search(r'Запрос\{[^}]*%\w+\.', code, re.S):
         fail(path, 'Bind query property expressions to scalar local parameters')
+    if re.search(r':\s*СобытиеПриИзменении\b(?!\s*<)', code):
+        fail(path, 'Specify the value type: СобытиеПриИзменении<ТипЗначения>')
     stack = []
     for character in code:
         if character in '([{':
@@ -120,7 +122,7 @@ for name, (path, descriptor) in METADATA.items():
     properties = {p['Имя'] for p in descriptor.get('Свойства', [])}
     components = {n['Имя'] for n in nodes(descriptor.get('Наследует', {})) if 'Имя' in n}
     for node in nodes(descriptor):
-        for attribute in ('Обработчик', 'ПослеСоздания', 'ПриНажатии'):
+        for attribute in ('Обработчик', 'ПослеСоздания', 'ПриНажатии', 'ПриИзменении'):
             if attribute in node and node[attribute] not in declared:
                 fail(path, f'Missing native handler: {node[attribute]}')
         if 'ТипФормы' in node and node['ТипФормы'] not in METADATA:
