@@ -37,6 +37,12 @@ METHODS = {p: set(re.findall(r'^метод (\w+)\(', s, re.M)) for p, s in SOURC
 
 for path, source in SOURCES.items():
     code = erase_literals(source)
+    if '&&' in code or '||' in code or re.search(r'(?<![\w)\]])!(?!=)', code):
+        fail(path, 'Use XBSL logical operators: и, или, не')
+    if path.name.endswith('.Объект.xbsl') and 'Запрос{' in code:
+        fail(path, 'Move query literals from nested object modules to entity managers')
+    if re.search(r'Запрос\{[^}]*%\w+\.', code, re.S):
+        fail(path, 'Bind query property expressions to scalar local parameters')
     stack = []
     for character in code:
         if character in '([{':
