@@ -29,6 +29,8 @@ class XArray(list):
 
 
 def call(receiver, method, *args):
+    if method == 'Сократить':
+        return receiver.strip()
     if method == 'Округлить':
         precision = int(args[0]) if args else 0
         mode = args[1] if len(args) > 1 else ROUND_HALF_UP
