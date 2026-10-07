@@ -1,41 +1,54 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "API обмена экономической игры с ERP",
-    "version": "0.1.0-design",
-    "description": "Проект прикладного HTTP API Элемента 10.0. Реализация отсутствует. Это не спецификация стандартного OData ERP. Транспорт OData адаптируется к тем же предметным данным и операциям."
+    "title": "ERP Game API",
+    "version": "1.0",
+    "description": "Нормативный контракт из приложения В ТЗ расширения ERP. Очередь инициируется ERP. Старый 0.1.0-design несовместим."
   },
   "servers": [
     {
-      "url": "/api/game/v1",
-      "description": "Относительно адреса приложения Элемента; префикс /api добавляет платформа."
+      "url": "/api/game/v1"
     }
   ],
   "security": [
     {
-      "platformBearer": []
+      "serviceBearer": []
     }
   ],
   "paths": {
     "/bindings/{bindingId}/context": {
       "get": {
         "operationId": "getContext",
-        "summary": "Получить доступный контекст игры",
         "parameters": [
           {
             "name": "bindingId",
             "in": "path",
             "required": true,
             "schema": {
+              "$ref": "#/components/schemas/UUID"
+            }
+          },
+          {
+            "name": "X-Game-Contract-Version",
+            "in": "header",
+            "required": true,
+            "schema": {
               "type": "string",
-              "format": "uuid"
-            },
-            "description": "Назначенная аутентифицированному сервису привязка к участнику игры."
+              "const": "1.0"
+            }
           }
         ],
         "responses": {
           "200": {
-            "description": "Успешный результат; для повторного POST возвращается прежний ресурс.",
+            "description": "Успешное чтение или сохранение. Повтор POST возвращает прежний resourceId и replayed=true.",
+            "headers": {
+              "X-Game-Contract-Version": {
+                "schema": {
+                  "type": "string",
+                  "const": "1.0"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -44,8 +57,18 @@
               }
             }
           },
+          "400": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "401": {
-            "description": "Требуется аутентификация.",
+            "description": "Ошибка протокола; code определяет причину.",
             "content": {
               "application/json": {
                 "schema": {
@@ -55,7 +78,7 @@
             }
           },
           "403": {
-            "description": "Нет прав на привязку или операцию.",
+            "description": "Ошибка протокола; code определяет причину.",
             "content": {
               "application/json": {
                 "schema": {
@@ -64,8 +87,45 @@
               }
             }
           },
+          "404": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Allow": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
           "409": {
-            "description": "Несовместимое состояние, старый токен или конфликт ключа повтора.",
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Ошибка протокола; code определяет причину.",
             "content": {
               "application/json": {
                 "schema": {
@@ -75,7 +135,35 @@
             }
           },
           "422": {
-            "description": "Неверные или неполные данные.",
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Ошибка протокола; code определяет причину.",
             "content": {
               "application/json": {
                 "schema": {
@@ -85,7 +173,204 @@
             }
           },
           "503": {
-            "description": "Временная недоступность.",
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bindings/{bindingId}/commands": {
+      "get": {
+        "operationId": "getCommandsResponse",
+        "parameters": [
+          {
+            "name": "bindingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            }
+          },
+          {
+            "name": "X-Game-Contract-Version",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "const": "1.0"
+            }
+          },
+          {
+            "name": "gameId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            }
+          },
+          {
+            "name": "afterSequence",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647,
+              "default": 0
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешное чтение или сохранение. Повтор POST возвращает прежний resourceId и replayed=true.",
+            "headers": {
+              "X-Game-Contract-Version": {
+                "schema": {
+                  "type": "string",
+                  "const": "1.0"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Allow": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Ошибка протокола; code определяет причину.",
             "content": {
               "application/json": {
                 "schema": {
@@ -99,33 +384,45 @@
     },
     "/bindings/{bindingId}/snapshots": {
       "post": {
-        "operationId": "submitSnapshot",
-        "summary": "Передать снимок ERP",
+        "operationId": "submitSnapshotRequest",
         "parameters": [
           {
             "name": "bindingId",
             "in": "path",
             "required": true,
             "schema": {
+              "$ref": "#/components/schemas/UUID"
+            }
+          },
+          {
+            "name": "X-Game-Contract-Version",
+            "in": "header",
+            "required": true,
+            "schema": {
               "type": "string",
-              "format": "uuid"
-            },
-            "description": "Назначенная аутентифицированному сервису привязка к участнику игры."
+              "const": "1.0"
+            }
           },
           {
             "name": "Idempotency-Key",
             "in": "header",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "description": "Совпадает с messageId; повтор с иным маршрутом или телом отклоняется."
+              "$ref": "#/components/schemas/UUID"
+            }
           }
         ],
         "responses": {
           "200": {
-            "description": "Успешный результат; для повторного POST возвращается прежний ресурс.",
+            "description": "Успешное чтение или сохранение. Повтор POST возвращает прежний resourceId и replayed=true.",
+            "headers": {
+              "X-Game-Contract-Version": {
+                "schema": {
+                  "type": "string",
+                  "const": "1.0"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -134,8 +431,18 @@
               }
             }
           },
+          "400": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "401": {
-            "description": "Требуется аутентификация.",
+            "description": "Ошибка протокола; code определяет причину.",
             "content": {
               "application/json": {
                 "schema": {
@@ -145,7 +452,7 @@
             }
           },
           "403": {
-            "description": "Нет прав на привязку или операцию.",
+            "description": "Ошибка протокола; code определяет причину.",
             "content": {
               "application/json": {
                 "schema": {
@@ -154,8 +461,45 @@
               }
             }
           },
+          "404": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Allow": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
           "409": {
-            "description": "Несовместимое состояние, старый токен или конфликт ключа повтора.",
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Ошибка протокола; code определяет причину.",
             "content": {
               "application/json": {
                 "schema": {
@@ -165,7 +509,35 @@
             }
           },
           "422": {
-            "description": "Неверные или неполные данные.",
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Ошибка протокола; code определяет причину.",
             "content": {
               "application/json": {
                 "schema": {
@@ -175,7 +547,7 @@
             }
           },
           "503": {
-            "description": "Временная недоступность.",
+            "description": "Ошибка протокола; code определяет причину.",
             "content": {
               "application/json": {
                 "schema": {
@@ -187,78 +559,58 @@
         },
         "requestBody": {
           "required": true,
+          "description": "UTF-8 JSON, максимум 1 МиБ, без сжатия. Ключ совпадает с messageId. Неизменные байты при повторе.",
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/SnapshotRequest"
-              },
-              "example": {
-                "messageId": "f3247bb9-9192-4f73-9a58-0ed88e45d3ab",
-                "phaseToken": "d9b326e9-8332-4647-803d-9e687ed4ad6a",
-                "roundNumber": 1,
-                "sourceVersion": "erp-freeze-1",
-                "capturedAt": "2026-10-06T15:00:00+03:00",
-                "kind": "frozen",
-                "currency": "RUB",
-                "offers": [
-                  {
-                    "productCode": "CityRide",
-                    "price": "52000.00",
-                    "availableQuantity": 30
-                  },
-                  {
-                    "productCode": "SportDrive",
-                    "price": "82000.00",
-                    "availableQuantity": 10
-                  },
-                  {
-                    "productCode": "CargoMax",
-                    "price": "90000.00",
-                    "availableQuantity": 25
-                  },
-                  {
-                    "productCode": "TourPro",
-                    "price": "88000.00",
-                    "availableQuantity": 12
-                  }
-                ],
-                "balances": []
               }
             }
           }
-        },
-        "description": "Для final обязателен financials; для frozen и final требуется подтверждённая фиксация источника. Набор offers должен содержать все продукты текущей игры без повторов. Monitoring не является входом окончательного расчёта."
+        }
       }
     },
     "/bindings/{bindingId}/readiness": {
       "post": {
-        "operationId": "submitReadiness",
-        "summary": "Передать готовность участника",
+        "operationId": "submitReadinessRequest",
         "parameters": [
           {
             "name": "bindingId",
             "in": "path",
             "required": true,
             "schema": {
+              "$ref": "#/components/schemas/UUID"
+            }
+          },
+          {
+            "name": "X-Game-Contract-Version",
+            "in": "header",
+            "required": true,
+            "schema": {
               "type": "string",
-              "format": "uuid"
-            },
-            "description": "Назначенная аутентифицированному сервису привязка к участнику игры."
+              "const": "1.0"
+            }
           },
           {
             "name": "Idempotency-Key",
             "in": "header",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "description": "Совпадает с messageId; повтор с иным маршрутом или телом отклоняется."
+              "$ref": "#/components/schemas/UUID"
+            }
           }
         ],
         "responses": {
           "200": {
-            "description": "Успешный результат; для повторного POST возвращается прежний ресурс.",
+            "description": "Успешное чтение или сохранение. Повтор POST возвращает прежний resourceId и replayed=true.",
+            "headers": {
+              "X-Game-Contract-Version": {
+                "schema": {
+                  "type": "string",
+                  "const": "1.0"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -267,8 +619,18 @@
               }
             }
           },
+          "400": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "401": {
-            "description": "Требуется аутентификация.",
+            "description": "Ошибка протокола; code определяет причину.",
             "content": {
               "application/json": {
                 "schema": {
@@ -278,7 +640,7 @@
             }
           },
           "403": {
-            "description": "Нет прав на привязку или операцию.",
+            "description": "Ошибка протокола; code определяет причину.",
             "content": {
               "application/json": {
                 "schema": {
@@ -287,8 +649,45 @@
               }
             }
           },
+          "404": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Allow": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
           "409": {
-            "description": "Несовместимое состояние, старый токен или конфликт ключа повтора.",
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Ошибка протокола; code определяет причину.",
             "content": {
               "application/json": {
                 "schema": {
@@ -298,7 +697,35 @@
             }
           },
           "422": {
-            "description": "Неверные или неполные данные.",
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Ошибка протокола; code определяет причину.",
             "content": {
               "application/json": {
                 "schema": {
@@ -308,7 +735,7 @@
             }
           },
           "503": {
-            "description": "Временная недоступность.",
+            "description": "Ошибка протокола; code определяет причину.",
             "content": {
               "application/json": {
                 "schema": {
@@ -320,6 +747,7 @@
         },
         "requestBody": {
           "required": true,
+          "description": "UTF-8 JSON, максимум 1 МиБ, без сжатия. Ключ совпадает с messageId. Неизменные байты при повторе.",
           "content": {
             "application/json": {
               "schema": {
@@ -327,123 +755,36 @@
               }
             }
           }
-        },
-        "description": "snapshotId — resourceId ранее принятого снимка того же участника, раунда и токена. Старый снимок и неподтверждённая фиксация отклоняются."
-      }
-    },
-    "/bindings/{bindingId}/commands": {
-      "get": {
-        "operationId": "getCommands",
-        "summary": "Получить неподтверждённые команды по порядку",
-        "parameters": [
-          {
-            "name": "bindingId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "description": "Назначенная аутентифицированному сервису привязка к участнику игры."
-          },
-          {
-            "name": "afterSequence",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 0,
-              "default": 0
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Успешный результат; для повторного POST возвращается прежний ресурс.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CommandsResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Требуется аутентификация.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Нет прав на привязку или операцию.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Несовместимое состояние, старый токен или конфликт ключа повтора.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Неверные или неполные данные.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Временная недоступность.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        },
-        "description": "GET не подтверждает выполнение. Предыдущую неподтверждённую команду нельзя пропустить по afterSequence. Один исполнитель ERP последовательно обрабатывает очередь участника."
+        }
       }
     },
     "/bindings/{bindingId}/commands/{commandId}/receipt": {
       "post": {
-        "operationId": "submitCommandReceipt",
-        "summary": "Подтвердить результат исполнения команды",
+        "operationId": "submitCommandReceiptRequest",
         "parameters": [
           {
             "name": "bindingId",
             "in": "path",
             "required": true,
             "schema": {
+              "$ref": "#/components/schemas/UUID"
+            }
+          },
+          {
+            "name": "X-Game-Contract-Version",
+            "in": "header",
+            "required": true,
+            "schema": {
               "type": "string",
-              "format": "uuid"
-            },
-            "description": "Назначенная аутентифицированному сервису привязка к участнику игры."
+              "const": "1.0"
+            }
           },
           {
             "name": "commandId",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uuid"
+              "$ref": "#/components/schemas/UUID"
             }
           },
           {
@@ -451,15 +792,21 @@
             "in": "header",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "description": "Совпадает с messageId; повтор с иным маршрутом или телом отклоняется."
+              "$ref": "#/components/schemas/UUID"
+            }
           }
         ],
         "responses": {
           "200": {
-            "description": "Успешный результат; для повторного POST возвращается прежний ресурс.",
+            "description": "Успешное чтение или сохранение. Повтор POST возвращает прежний resourceId и replayed=true.",
+            "headers": {
+              "X-Game-Contract-Version": {
+                "schema": {
+                  "type": "string",
+                  "const": "1.0"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -468,8 +815,18 @@
               }
             }
           },
+          "400": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "401": {
-            "description": "Требуется аутентификация.",
+            "description": "Ошибка протокола; code определяет причину.",
             "content": {
               "application/json": {
                 "schema": {
@@ -479,7 +836,7 @@
             }
           },
           "403": {
-            "description": "Нет прав на привязку или операцию.",
+            "description": "Ошибка протокола; code определяет причину.",
             "content": {
               "application/json": {
                 "schema": {
@@ -488,8 +845,45 @@
               }
             }
           },
+          "404": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Allow": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
           "409": {
-            "description": "Несовместимое состояние, старый токен или конфликт ключа повтора.",
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Ошибка протокола; code определяет причину.",
             "content": {
               "application/json": {
                 "schema": {
@@ -499,7 +893,35 @@
             }
           },
           "422": {
-            "description": "Неверные или неполные данные.",
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Ошибка протокола; code определяет причину.",
             "content": {
               "application/json": {
                 "schema": {
@@ -509,7 +931,7 @@
             }
           },
           "503": {
-            "description": "Временная недоступность.",
+            "description": "Ошибка протокола; code определяет причину.",
             "content": {
               "application/json": {
                 "schema": {
@@ -521,6 +943,7 @@
         },
         "requestBody": {
           "required": true,
+          "description": "UTF-8 JSON, максимум 1 МиБ, без сжатия. Ключ совпадает с messageId. Неизменные байты при повторе.",
           "content": {
             "application/json": {
               "schema": {
@@ -533,33 +956,45 @@
     },
     "/bindings/{bindingId}/sales-events": {
       "post": {
-        "operationId": "submitSalesEvent",
-        "summary": "Передать состояние реализации и связанных оплат",
+        "operationId": "submitSalesEventRequest",
         "parameters": [
           {
             "name": "bindingId",
             "in": "path",
             "required": true,
             "schema": {
+              "$ref": "#/components/schemas/UUID"
+            }
+          },
+          {
+            "name": "X-Game-Contract-Version",
+            "in": "header",
+            "required": true,
+            "schema": {
               "type": "string",
-              "format": "uuid"
-            },
-            "description": "Назначенная аутентифицированному сервису привязка к участнику игры."
+              "const": "1.0"
+            }
           },
           {
             "name": "Idempotency-Key",
             "in": "header",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "description": "Совпадает с messageId; повтор с иным маршрутом или телом отклоняется."
+              "$ref": "#/components/schemas/UUID"
+            }
           }
         ],
         "responses": {
           "200": {
-            "description": "Успешный результат; для повторного POST возвращается прежний ресурс.",
+            "description": "Успешное чтение или сохранение. Повтор POST возвращает прежний resourceId и replayed=true.",
+            "headers": {
+              "X-Game-Contract-Version": {
+                "schema": {
+                  "type": "string",
+                  "const": "1.0"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -568,8 +1003,18 @@
               }
             }
           },
+          "400": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "401": {
-            "description": "Требуется аутентификация.",
+            "description": "Ошибка протокола; code определяет причину.",
             "content": {
               "application/json": {
                 "schema": {
@@ -579,7 +1024,7 @@
             }
           },
           "403": {
-            "description": "Нет прав на привязку или операцию.",
+            "description": "Ошибка протокола; code определяет причину.",
             "content": {
               "application/json": {
                 "schema": {
@@ -588,8 +1033,45 @@
               }
             }
           },
+          "404": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Allow": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
           "409": {
-            "description": "Несовместимое состояние, старый токен или конфликт ключа повтора.",
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Ошибка протокола; code определяет причину.",
             "content": {
               "application/json": {
                 "schema": {
@@ -599,7 +1081,35 @@
             }
           },
           "422": {
-            "description": "Неверные или неполные данные.",
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Ошибка протокола; code определяет причину.",
             "content": {
               "application/json": {
                 "schema": {
@@ -609,7 +1119,7 @@
             }
           },
           "503": {
-            "description": "Временная недоступность.",
+            "description": "Ошибка протокола; code определяет причину.",
             "content": {
               "application/json": {
                 "schema": {
@@ -621,6 +1131,7 @@
         },
         "requestBody": {
           "required": true,
+          "description": "UTF-8 JSON, максимум 1 МиБ, без сжатия. Ключ совпадает с messageId. Неизменные байты при повторе.",
           "content": {
             "application/json": {
               "schema": {
@@ -628,79 +1139,269 @@
               }
             }
           }
+        }
+      }
+    },
+    "/bindings/{bindingId}/execution-events": {
+      "post": {
+        "operationId": "submitExecutionEventRequest",
+        "parameters": [
+          {
+            "name": "bindingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            }
+          },
+          {
+            "name": "X-Game-Contract-Version",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "const": "1.0"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/UUID"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешное чтение или сохранение. Повтор POST возвращает прежний resourceId и replayed=true.",
+            "headers": {
+              "X-Game-Contract-Version": {
+                "schema": {
+                  "type": "string",
+                  "const": "1.0"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Accepted"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Allow": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Ошибка протокола; code определяет причину.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
         },
-        "description": "Передаётся актуальное накопленное состояние конкретной реализации с монотонной stateVersion, а не дельта для повторного суммирования. Сервер сверяет заказ, расчёт, цены и платежи. После финализации требуется отдельная процедура исправления."
+        "requestBody": {
+          "required": true,
+          "description": "UTF-8 JSON, максимум 1 МиБ, без сжатия. Ключ совпадает с messageId. Неизменные байты при повторе.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExecutionEventRequest"
+              }
+            }
+          }
+        }
       }
     }
   },
   "components": {
     "securitySchemes": {
-      "platformBearer": {
+      "serviceBearer": {
         "type": "http",
-        "scheme": "bearer",
-        "description": "Штатная аутентификация платформы; точный способ получения токена подтвердить на выбранной сборке."
+        "scheme": "bearer"
       }
     },
     "schemas": {
-      "Error": {
-        "type": "object",
-        "properties": {
-          "code": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 200
-          },
-          "message": {
-            "type": "string"
-          },
-          "correlationId": {
-            "type": "string",
-            "format": "uuid"
-          }
-        },
-        "required": [
-          "code",
-          "message",
-          "correlationId"
-        ],
-        "additionalProperties": false
+      "UUID": {
+        "type": "string",
+        "format": "uuid",
+        "pattern": "^(?!00000000-0000-0000-0000-000000000000$)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
       },
-      "Accepted": {
-        "type": "object",
-        "properties": {
-          "messageId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "resourceId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "replayed": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "messageId",
-          "resourceId",
-          "replayed"
-        ],
-        "additionalProperties": false
+      "Amount": {
+        "type": "string",
+        "pattern": "^(0|[1-9][0-9]{0,12})\\.[0-9]{2}$"
+      },
+      "PositiveAmount": {
+        "type": "string",
+        "pattern": "^(?!0\\.00$)(0|[1-9][0-9]{0,12})\\.[0-9]{2}$"
+      },
+      "SignedAmount": {
+        "type": "string",
+        "pattern": "^(?!-0\\.00$)-?(0|[1-9][0-9]{0,12})\\.[0-9]{2}$"
+      },
+      "Quantity": {
+        "type": "string",
+        "pattern": "^(0|[1-9][0-9]{0,12})(\\.[0-9]{1,6})?$"
+      },
+      "PositiveQuantity": {
+        "type": "string",
+        "pattern": "^(?!0(?:\\.0+)?$)(0|[1-9][0-9]{0,12})(\\.[0-9]{1,6})?$"
+      },
+      "Code": {
+        "type": "string",
+        "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+      },
+      "GameMonth": {
+        "type": "string",
+        "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$"
+      },
+      "Hash": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
       },
       "Context": {
         "type": "object",
+        "additionalProperties": false,
         "properties": {
-          "gameId": {
+          "contractVersion": {
             "type": "string",
-            "format": "uuid"
+            "const": "1.0",
+            "description": "Версия контракта. Только 1.0."
+          },
+          "bindingId": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Назначенная сервисному пользователю привязка. Формат uuid."
+          },
+          "gameId": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Идентификатор текущей игры. Формат uuid."
           },
           "participantId": {
-            "type": "string",
-            "format": "uuid"
+            "$ref": "#/components/schemas/UUID",
+            "description": "Идентификатор команды. Формат uuid."
           },
           "roundNumber": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 0,
+            "maximum": 2147483647,
+            "description": "Текущий раунд. От 0 до 2147483647."
           },
           "phaseCode": {
             "type": "string",
@@ -712,15 +1413,18 @@
               "production",
               "sales",
               "analysis"
-            ]
+            ],
+            "description": "Текущая фаза. Значения: initialization, initial_sales, planning, purchasing, production, sales, analysis."
           },
           "phaseToken": {
-            "type": "string",
-            "format": "uuid"
+            "$ref": "#/components/schemas/UUID",
+            "description": "Токен экземпляра фазы. Формат uuid."
           },
           "stateVersion": {
             "type": "integer",
-            "minimum": 1
+            "minimum": 1,
+            "maximum": 2147483647,
+            "description": "Версия управления игрой; возрастает при переходах. От 1 до 2147483647."
           },
           "gameState": {
             "type": "string",
@@ -731,7 +1435,41 @@
               "paused",
               "completed",
               "cancelled"
-            ]
+            ],
+            "description": "Состояние игры. Значения: draft, preparing, running, paused, completed, cancelled."
+          },
+          "gameMonth": {
+            "$ref": "#/components/schemas/GameMonth",
+            "description": "Месяц текущего раунда."
+          },
+          "documentDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Дата для текущих учебных документов. Формат date."
+          },
+          "deadline": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Реальный срок фазы; null в preparing/draft или при паузе."
+          },
+          "serverTime": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Текущее время сервера Элемента для сверки часов. Формат date-time."
+          },
+          "settingsHash": {
+            "$ref": "#/components/schemas/Hash",
+            "description": "Отпечаток GameSettings по правилу В 1."
+          },
+          "settings": {
+            "$ref": "#/components/schemas/GameSettings",
+            "description": "Полный согласованный профиль игры."
           },
           "capabilities": {
             "type": "array",
@@ -742,13 +1480,20 @@
                 "phaseGuard",
                 "idempotentCommands",
                 "salesFacts",
-                "finalFinancials"
+                "finalFinancials",
+                "automaticExecution",
+                "executionReports"
               ]
             },
-            "minItems": 0
+            "minItems": 0,
+            "maxItems": 7,
+            "uniqueItems": true,
+            "description": "Возможности API Элемента; массив уникальных кодов. 0–7 элементов. Без повторов. Элементы: consistentSnapshot, phaseGuard, idempotentCommands, salesFacts, finalFinancials, automaticExecution, executionReports."
           }
         },
         "required": [
+          "contractVersion",
+          "bindingId",
           "gameId",
           "participantId",
           "roundNumber",
@@ -756,12 +1501,181 @@
           "phaseToken",
           "stateVersion",
           "gameState",
+          "gameMonth",
+          "documentDate",
+          "deadline",
+          "serverTime",
+          "settingsHash",
+          "settings",
           "capabilities"
-        ],
-        "additionalProperties": false
+        ]
       },
-      "Offer": {
+      "GameSettings": {
         "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "profileId": {
+            "$ref": "#/components/schemas/Code",
+            "description": "Идентификатор согласованного профиля ERP."
+          },
+          "profileVersion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50,
+            "description": "Версия профиля; непустая строка. Длина 1–50 символов."
+          },
+          "executionMode": {
+            "type": "string",
+            "enum": [
+              "basic",
+              "automatic"
+            ],
+            "description": "Базовый или автоматический режим. Значения: basic, automatic."
+          },
+          "priceFixation": {
+            "type": "string",
+            "enum": [
+              "after_planning",
+              "before_sales"
+            ],
+            "description": "Момент фиксации цены. Значения: after_planning, before_sales."
+          },
+          "currency": {
+            "type": "string",
+            "const": "RUB",
+            "description": "Единственная валюта. Только RUB."
+          },
+          "taxMode": {
+            "type": "string",
+            "enum": [
+              "no_vat",
+              "price_includes_vat",
+              "price_excludes_vat"
+            ],
+            "description": "Правило НДС для цен, сумм заказа и оплаты. Значения: no_vat, price_includes_vat, price_excludes_vat."
+          },
+          "roundCount": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Количество производственных раундов без раунда 0. От 1 до 100."
+          },
+          "calendar": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CalendarRound"
+            },
+            "minItems": 2,
+            "maxItems": 101,
+            "description": "Полный игровой календарь. 2–101 элементов."
+          },
+          "products": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProductRule"
+            },
+            "minItems": 4,
+            "maxItems": 4,
+            "description": "Правила всех четырёх моделей. 4–4 элементов."
+          },
+          "procurementReduction": {
+            "type": "string",
+            "enum": [
+              "cheapest_item_first_v1"
+            ],
+            "description": "Алгоритм сокращения закупок FR-47; активен только в automatic. Значения: cheapest_item_first_v1."
+          },
+          "productionReduction": {
+            "type": "string",
+            "enum": [
+              "product_code_first_v1"
+            ],
+            "description": "Алгоритм сокращения выпуска FR-47; активен только в automatic. Значения: product_code_first_v1."
+          },
+          "allowSupplierDebt": {
+            "type": "boolean",
+            "description": "Для этой версии false: обязательные долги поставщику погашаются.",
+            "const": false
+          },
+          "allowCustomerDebt": {
+            "type": "boolean",
+            "description": "Для этой версии false: отгруженное оплачивается до final.",
+            "const": false
+          },
+          "pollIntervalSeconds": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 300,
+            "description": "Интервал опроса. От 1 до 300."
+          },
+          "requestTimeoutSeconds": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 120,
+            "description": "Тайм-аут запроса. От 1 до 120."
+          },
+          "connectionLostSeconds": {
+            "type": "integer",
+            "minimum": 10,
+            "maximum": 3600,
+            "description": "Порог безопасного ожидания. От 10 до 3600."
+          },
+          "maxClockSkewSeconds": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 60,
+            "description": "Допустимое расхождение часов ERP и Элемента. От 1 до 60."
+          }
+        },
+        "required": [
+          "profileId",
+          "profileVersion",
+          "executionMode",
+          "priceFixation",
+          "currency",
+          "taxMode",
+          "roundCount",
+          "calendar",
+          "products",
+          "procurementReduction",
+          "productionReduction",
+          "allowSupplierDebt",
+          "allowCustomerDebt",
+          "pollIntervalSeconds",
+          "requestTimeoutSeconds",
+          "connectionLostSeconds",
+          "maxClockSkewSeconds"
+        ]
+      },
+      "CalendarRound": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "roundNumber": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647,
+            "description": "Номер раунда; 0 — стартовая продажа. От 0 до 2147483647."
+          },
+          "gameMonth": {
+            "$ref": "#/components/schemas/GameMonth",
+            "description": "Месяц учёта этого раунда."
+          },
+          "documentDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Базовая игровая дата документов; YYYY-MM-DD. Формат date."
+          }
+        },
+        "required": [
+          "roundNumber",
+          "gameMonth",
+          "documentDate"
+        ]
+      },
+      "ProductRule": {
+        "type": "object",
+        "additionalProperties": false,
         "properties": {
           "productCode": {
             "type": "string",
@@ -770,118 +1684,70 @@
               "SportDrive",
               "CargoMax",
               "TourPro"
-            ]
+            ],
+            "description": "Код готовой продукции. Значения: CityRide, SportDrive, CargoMax, TourPro."
           },
-          "price": {
+          "minPrice": {
+            "$ref": "#/components/schemas/PositiveAmount",
+            "description": "Минимальная допустимая цена предложения."
+          },
+          "maxPrice": {
+            "$ref": "#/components/schemas/PositiveAmount",
+            "description": "Максимальная допустимая цена предложения."
+          },
+          "vatRate": {
             "type": "string",
-            "pattern": "^(?!0\\.00$)(0|[1-9][0-9]*)\\.[0-9]{2}$",
-            "description": "Цена должна быть положительной; диапазон проверяет сервер по сценарию."
-          },
-          "availableQuantity": {
-            "type": "integer",
-            "minimum": 0
+            "pattern": "^(0|[1-9][0-9]{0,2})\\.[0-9]{2}$",
+            "description": "Ставка НДС в процентах; например 0.00. Значение от 0 до 100. Шаблон: ^(0|[1-9][0-9]{0,2})\\.[0-9]{2}$"
           }
         },
         "required": [
           "productCode",
-          "price",
-          "availableQuantity"
-        ],
-        "additionalProperties": false
-      },
-      "Balance": {
-        "type": "object",
-        "properties": {
-          "itemCode": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 200
-          },
-          "quantity": {
-            "type": "string",
-            "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]{1,6})?$"
-          },
-          "unitCode": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 200
-          },
-          "warehouseId": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 200
-          },
-          "characteristicId": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 200
-          }
-        },
-        "required": [
-          "itemCode",
-          "quantity",
-          "unitCode",
-          "warehouseId"
-        ],
-        "additionalProperties": false
-      },
-      "Financials": {
-        "type": "object",
-        "properties": {
-          "cash": {
-            "type": "string",
-            "pattern": "^-?(0|[1-9][0-9]*)\\.[0-9]{2}$"
-          },
-          "profit": {
-            "type": "string",
-            "pattern": "^-?(0|[1-9][0-9]*)\\.[0-9]{2}$"
-          },
-          "customerDebt": {
-            "type": "string",
-            "pattern": "^(0|[1-9][0-9]*)\\.[0-9]{2}$",
-            "description": "Десятичная сумма в строке, два знака после точки."
-          },
-          "supplierDebt": {
-            "type": "string",
-            "pattern": "^(0|[1-9][0-9]*)\\.[0-9]{2}$",
-            "description": "Десятичная сумма в строке, два знака после точки."
-          },
-          "monthClosed": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "cash",
-          "profit",
-          "customerDebt",
-          "supplierDebt",
-          "monthClosed"
-        ],
-        "additionalProperties": false
+          "minPrice",
+          "maxPrice",
+          "vatRate"
+        ]
       },
       "SnapshotRequest": {
         "type": "object",
+        "additionalProperties": false,
         "properties": {
           "messageId": {
-            "type": "string",
-            "format": "uuid"
+            "$ref": "#/components/schemas/UUID",
+            "description": "Идентификатор неизменяемого сообщения; совпадает с Idempotency-Key. Формат uuid."
+          },
+          "gameId": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Игра сообщения; должна принадлежать bindingId. Формат uuid."
+          },
+          "participantId": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Команда сообщения; должна принадлежать bindingId. Формат uuid."
           },
           "phaseToken": {
-            "type": "string",
-            "format": "uuid"
+            "$ref": "#/components/schemas/UUID",
+            "description": "Токен фазы, к которой относится событие. Формат uuid."
           },
           "roundNumber": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 0,
+            "maximum": 2147483647,
+            "description": "Раунд события. От 0 до 2147483647."
+          },
+          "gameMonth": {
+            "$ref": "#/components/schemas/GameMonth",
+            "description": "Игровой месяц по календарю раунда."
           },
           "sourceVersion": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 200
+            "maxLength": 200,
+            "description": "Устойчивая версия сохранённой фиксации ERP. Длина 1–200 символов."
           },
           "capturedAt": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "description": "Реальное время формирования данных. Формат date-time."
           },
           "kind": {
             "type": "string",
@@ -889,34 +1755,48 @@
               "monitoring",
               "frozen",
               "final"
-            ]
+            ],
+            "description": "Назначение снимка. Значения: monitoring, frozen, final."
           },
           "currency": {
             "type": "string",
-            "const": "RUB"
+            "const": "RUB",
+            "description": "Валюта. Только RUB."
+          },
+          "freezeCommandId": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Команда freeze_phase либо request_final_snapshot, разрешившая фиксацию. Формат uuid."
           },
           "offers": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Offer"
             },
-            "minItems": 0
+            "minItems": 4,
+            "maxItems": 4,
+            "description": "Все четыре модели, включая нулевые запасы. 4–4 элементов."
           },
           "balances": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Balance"
             },
-            "minItems": 0
+            "minItems": 0,
+            "maxItems": 2000,
+            "description": "Полные остатки профиля по трём складам, включая нулевые строки. 0–2000 элементов."
           },
           "financials": {
-            "$ref": "#/components/schemas/Financials"
+            "$ref": "#/components/schemas/Financials",
+            "description": "Обязательно при kind=final."
           }
         },
         "required": [
           "messageId",
+          "gameId",
+          "participantId",
           "phaseToken",
           "roundNumber",
+          "gameMonth",
           "sourceVersion",
           "capturedAt",
           "kind",
@@ -924,8 +1804,24 @@
           "offers",
           "balances"
         ],
-        "additionalProperties": false,
         "allOf": [
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "frozen"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            },
+            "then": {
+              "required": [
+                "freezeCommandId"
+              ]
+            }
+          },
           {
             "if": {
               "properties": {
@@ -939,448 +1835,329 @@
             },
             "then": {
               "required": [
+                "freezeCommandId",
                 "financials"
               ]
             }
           }
         ]
       },
+      "Offer": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "productCode": {
+            "type": "string",
+            "enum": [
+              "CityRide",
+              "SportDrive",
+              "CargoMax",
+              "TourPro"
+            ],
+            "description": "Код модели. Значения: CityRide, SportDrive, CargoMax, TourPro."
+          },
+          "price": {
+            "$ref": "#/components/schemas/PositiveAmount",
+            "description": "Зафиксированная цена в налоговом режиме GameSettings."
+          },
+          "availableQuantity": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647,
+            "description": "Доступное к новому заказу количество велосипедов. От 0 до 2147483647."
+          }
+        },
+        "required": [
+          "productCode",
+          "price",
+          "availableQuantity"
+        ]
+      },
+      "Balance": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "itemCode": {
+            "$ref": "#/components/schemas/Code",
+            "description": "Продукт или комплектующая из профиля."
+          },
+          "quantity": {
+            "$ref": "#/components/schemas/Quantity",
+            "description": "Количество после пересчёта в игровую единицу."
+          },
+          "unitCode": {
+            "type": "string",
+            "enum": [
+              "pcs",
+              "set"
+            ],
+            "description": "pcs — штука; set — комплект. Значения: pcs, set."
+          },
+          "warehouseId": {
+            "type": "string",
+            "enum": [
+              "purchases",
+              "finished_goods",
+              "workshop"
+            ],
+            "description": "Устойчивый код склада; это не GUID склада ERP. Значения: purchases, finished_goods, workshop."
+          },
+          "characteristicId": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "GUID характеристики ERP при использовании характеристик. Формат uuid."
+          }
+        },
+        "required": [
+          "itemCode",
+          "quantity",
+          "unitCode",
+          "warehouseId"
+        ]
+      },
+      "Financials": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "cash": {
+            "$ref": "#/components/schemas/SignedAmount",
+            "description": "Фактический остаток по игровым кассам и счетам на конец месяца."
+          },
+          "profit": {
+            "$ref": "#/components/schemas/SignedAmount",
+            "description": "Прибыль игрового месяца после закрытия, по управленческому учёту."
+          },
+          "customerDebt": {
+            "$ref": "#/components/schemas/Amount",
+            "description": "Непогашенная задолженность покупателя на конец месяца."
+          },
+          "supplierDebt": {
+            "$ref": "#/components/schemas/Amount",
+            "description": "Непогашенная задолженность поставщику на конец месяца."
+          },
+          "monthClosed": {
+            "type": "boolean",
+            "description": "Подтверждено успешное выполнение обязательного закрытия."
+          }
+        },
+        "required": [
+          "cash",
+          "profit",
+          "customerDebt",
+          "supplierDebt",
+          "monthClosed"
+        ]
+      },
       "ReadinessRequest": {
         "type": "object",
+        "additionalProperties": false,
         "properties": {
           "messageId": {
-            "type": "string",
-            "format": "uuid"
+            "$ref": "#/components/schemas/UUID",
+            "description": "Идентификатор неизменяемого сообщения; совпадает с Idempotency-Key. Формат uuid."
+          },
+          "gameId": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Игра сообщения; должна принадлежать bindingId. Формат uuid."
+          },
+          "participantId": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Команда сообщения; должна принадлежать bindingId. Формат uuid."
           },
           "phaseToken": {
-            "type": "string",
-            "format": "uuid"
+            "$ref": "#/components/schemas/UUID",
+            "description": "Токен фазы, к которой относится событие. Формат uuid."
           },
           "roundNumber": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 0,
+            "maximum": 2147483647,
+            "description": "Раунд события. От 0 до 2147483647."
+          },
+          "gameMonth": {
+            "$ref": "#/components/schemas/GameMonth",
+            "description": "Игровой месяц по календарю раунда."
           },
           "snapshotId": {
-            "type": "string",
-            "format": "uuid"
+            "$ref": "#/components/schemas/UUID",
+            "description": "resourceId снимка, принятого для этой фазы и области. Формат uuid."
           },
           "ready": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "Готовность участника."
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "description": "Причина ready=false или отзыва готовности. Длина 1–2000 символов."
           }
         },
         "required": [
           "messageId",
+          "gameId",
+          "participantId",
           "phaseToken",
           "roundNumber",
+          "gameMonth",
           "snapshotId",
           "ready"
         ],
-        "additionalProperties": false
-      },
-      "CommandReceiptRequest": {
-        "type": "object",
-        "properties": {
-          "messageId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "processing",
-              "completed",
-              "failed"
-            ]
-          },
-          "phaseToken": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "erpDocumentIds": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "minItems": 0
-          },
-          "snapshotId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "errorCode": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 200
-          },
-          "errorMessage": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "messageId",
-          "status",
-          "phaseToken",
-          "erpDocumentIds"
-        ],
-        "additionalProperties": false,
         "allOf": [
           {
             "if": {
               "properties": {
-                "status": {
-                  "const": "failed"
+                "ready": {
+                  "const": false
                 }
               },
               "required": [
-                "status"
+                "ready"
               ]
             },
             "then": {
               "required": [
-                "errorCode",
-                "errorMessage"
+                "reason"
               ]
             }
           }
         ]
       },
-      "OrderLine": {
+      "Accepted": {
         "type": "object",
+        "additionalProperties": false,
         "properties": {
-          "productCode": {
+          "contractVersion": {
             "type": "string",
-            "enum": [
-              "CityRide",
-              "SportDrive",
-              "CargoMax",
-              "TourPro"
-            ]
+            "const": "1.0",
+            "description": "Версия. Только 1.0."
           },
-          "quantity": {
-            "type": "integer",
-            "minimum": 1
-          },
-          "unitPrice": {
-            "type": "string",
-            "pattern": "^(?!0\\.00$)(0|[1-9][0-9]*)\\.[0-9]{2}$",
-            "description": "Десятичная сумма в строке, два знака после точки."
-          }
-        },
-        "required": [
-          "productCode",
-          "quantity",
-          "unitPrice"
-        ],
-        "additionalProperties": false
-      },
-      "PrepareGamePayload": {
-        "type": "object",
-        "properties": {
-          "initialCash": {
-            "type": "string",
-            "pattern": "^(0|[1-9][0-9]*)\\.[0-9]{2}$",
-            "description": "Десятичная сумма в строке, два знака после точки."
-          },
-          "currency": {
-            "type": "string",
-            "const": "RUB"
-          },
-          "balances": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Balance"
-            },
-            "minItems": 0
-          },
-          "seed": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 200
-          }
-        },
-        "required": [
-          "initialCash",
-          "currency",
-          "balances",
-          "seed"
-        ],
-        "additionalProperties": false
-      },
-      "PhasePayload": {
-        "type": "object",
-        "properties": {
-          "phaseCode": {
-            "type": "string",
-            "enum": [
-              "initialization",
-              "initial_sales",
-              "planning",
-              "purchasing",
-              "production",
-              "sales",
-              "analysis"
-            ]
-          },
-          "deadline": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "required": [
-          "phaseCode"
-        ],
-        "additionalProperties": false
-      },
-      "CreateOrderPayload": {
-        "type": "object",
-        "properties": {
-          "allocationId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "externalOrderId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "currency": {
-            "type": "string",
-            "const": "RUB"
-          },
-          "lines": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/OrderLine"
-            },
-            "minItems": 1
-          }
-        },
-        "required": [
-          "allocationId",
-          "externalOrderId",
-          "currency",
-          "lines"
-        ],
-        "additionalProperties": false
-      },
-      "PayRealizationPayload": {
-        "type": "object",
-        "properties": {
-          "erpRealizationId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "paymentOperationId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "amount": {
-            "type": "string",
-            "pattern": "^(?!0\\.00$)(0|[1-9][0-9]*)\\.[0-9]{2}$",
-            "description": "Десятичная сумма в строке, два знака после точки."
-          },
-          "currency": {
-            "type": "string",
-            "const": "RUB"
-          }
-        },
-        "required": [
-          "erpRealizationId",
-          "paymentOperationId",
-          "amount",
-          "currency"
-        ],
-        "additionalProperties": false
-      },
-      "FinalSnapshotPayload": {
-        "type": "object",
-        "properties": {
-          "gameMonth": {
-            "type": "string",
-            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$"
-          },
-          "requireClosedMonth": {
-            "type": "boolean",
-            "const": true
-          }
-        },
-        "required": [
-          "gameMonth",
-          "requireClosedMonth"
-        ],
-        "additionalProperties": false
-      },
-      "PausePayload": {
-        "type": "object",
-        "properties": {
-          "reason": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 2000
-          }
-        },
-        "required": [
-          "reason"
-        ],
-        "additionalProperties": false
-      },
-      "EmptyPayload": {
-        "type": "object",
-        "properties": {},
-        "required": [],
-        "additionalProperties": false
-      },
-      "SalesLine": {
-        "type": "object",
-        "properties": {
-          "productCode": {
-            "type": "string",
-            "enum": [
-              "CityRide",
-              "SportDrive",
-              "CargoMax",
-              "TourPro"
-            ]
-          },
-          "quantity": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "unitPrice": {
-            "type": "string",
-            "pattern": "^(?!0\\.00$)(0|[1-9][0-9]*)\\.[0-9]{2}$",
-            "description": "Десятичная сумма в строке, два знака после точки."
-          }
-        },
-        "required": [
-          "productCode",
-          "quantity",
-          "unitPrice"
-        ],
-        "additionalProperties": false
-      },
-      "PaymentFact": {
-        "type": "object",
-        "properties": {
-          "erpPaymentId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "amount": {
-            "type": "string",
-            "pattern": "^(0|[1-9][0-9]*)\\.[0-9]{2}$",
-            "description": "Десятичная сумма в строке, два знака после точки."
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "posted",
-              "reversed"
-            ]
-          }
-        },
-        "required": [
-          "erpPaymentId",
-          "amount",
-          "status"
-        ],
-        "additionalProperties": false
-      },
-      "SalesEventRequest": {
-        "type": "object",
-        "properties": {
           "messageId": {
-            "type": "string",
-            "format": "uuid"
+            "$ref": "#/components/schemas/UUID",
+            "description": "Принятое сообщение. Формат uuid."
           },
-          "phaseToken": {
-            "type": "string",
-            "format": "uuid"
+          "resourceId": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Сохранённый ресурс сервера; используется как snapshotId для снимка. Формат uuid."
           },
-          "roundNumber": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "allocationId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "erpOrderId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "erpRealizationId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "stateVersion": {
-            "type": "integer",
-            "minimum": 1
-          },
-          "capturedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "posted": {
-            "type": "boolean"
-          },
-          "currency": {
-            "type": "string",
-            "const": "RUB"
-          },
-          "lines": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/SalesLine"
-            },
-            "minItems": 1
-          },
-          "payments": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/PaymentFact"
-            },
-            "minItems": 0
+          "replayed": {
+            "type": "boolean",
+            "description": "false при первом принятии; true при идентичном повторе."
           }
         },
         "required": [
+          "contractVersion",
           "messageId",
-          "phaseToken",
-          "roundNumber",
-          "allocationId",
-          "erpOrderId",
-          "erpRealizationId",
-          "stateVersion",
-          "capturedAt",
-          "posted",
-          "currency",
-          "lines",
-          "payments"
-        ],
-        "additionalProperties": false
+          "resourceId",
+          "replayed"
+        ]
+      },
+      "Error": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "contractVersion": {
+            "type": "string",
+            "const": "1.0",
+            "description": "Версия. Только 1.0."
+          },
+          "code": {
+            "$ref": "#/components/schemas/Code",
+            "description": "Код из таблицы ошибок В 11."
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "description": "Понятное описание ошибки. Длина 1–2000 символов."
+          },
+          "correlationId": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Идентификатор диагностики сервера. Формат uuid."
+          },
+          "details": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldError"
+            },
+            "minItems": 0,
+            "maxItems": 100,
+            "description": "Ошибки полей; может отсутствовать. 0–100 элементов."
+          }
+        },
+        "required": [
+          "contractVersion",
+          "code",
+          "message",
+          "correlationId"
+        ]
+      },
+      "FieldError": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "field": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Путь JSON, например offers[0].price. Длина 1–200 символов."
+          },
+          "code": {
+            "$ref": "#/components/schemas/Code",
+            "description": "Код нарушения."
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "description": "Описание нарушения без секретов. Длина 1–2000 символов."
+          }
+        },
+        "required": [
+          "field",
+          "code",
+          "message"
+        ]
       },
       "Command": {
         "type": "object",
+        "additionalProperties": false,
         "properties": {
           "commandId": {
-            "type": "string",
-            "format": "uuid"
+            "$ref": "#/components/schemas/UUID",
+            "description": "Уникальный идентификатор команды. Формат uuid."
+          },
+          "gameId": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Игра; обязательна даже при известном bindingId. Формат uuid."
+          },
+          "participantId": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Команда. Формат uuid."
           },
           "sequence": {
             "type": "integer",
-            "minimum": 1
+            "minimum": 1,
+            "maximum": 2147483647,
+            "description": "Порядковый номер внутри bindingId+gameId. От 1 до 2147483647."
           },
           "phaseToken": {
-            "type": "string",
-            "format": "uuid"
+            "$ref": "#/components/schemas/UUID",
+            "description": "Токен команды; для open/resume — целевой токен. Формат uuid."
           },
           "roundNumber": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 0,
+            "maximum": 2147483647,
+            "description": "Раунд команды. От 0 до 2147483647."
+          },
+          "gameMonth": {
+            "$ref": "#/components/schemas/GameMonth",
+            "description": "Месяц раунда."
           },
           "issuedAt": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "description": "Реальное время выдачи. Формат date-time."
           },
           "kind": {
             "type": "string",
@@ -1393,22 +2170,25 @@
               "request_final_snapshot",
               "pause_game",
               "resume_game"
-            ]
+            ],
+            "description": "Вид команды. Значения: prepare_game, open_phase, freeze_phase, create_customer_order, pay_realization, request_final_snapshot, pause_game, resume_game."
           },
           "payload": {
-            "type": "object"
+            "description": "Строго одна схема полезной нагрузки из В 7; произвольные поля запрещены."
           }
         },
         "required": [
           "commandId",
+          "gameId",
+          "participantId",
           "sequence",
           "phaseToken",
           "roundNumber",
+          "gameMonth",
           "issuedAt",
           "kind",
           "payload"
         ],
-        "additionalProperties": false,
         "allOf": [
           {
             "if": {
@@ -1462,7 +2242,7 @@
             "then": {
               "properties": {
                 "payload": {
-                  "$ref": "#/components/schemas/PhasePayload"
+                  "$ref": "#/components/schemas/FreezePayload"
                 }
               }
             }
@@ -1557,7 +2337,7 @@
             "then": {
               "properties": {
                 "payload": {
-                  "$ref": "#/components/schemas/EmptyPayload"
+                  "$ref": "#/components/schemas/ResumePayload"
                 }
               }
             }
@@ -1566,24 +2346,1076 @@
       },
       "CommandsResponse": {
         "type": "object",
+        "additionalProperties": false,
         "properties": {
+          "contractVersion": {
+            "type": "string",
+            "const": "1.0",
+            "description": "Версия. Только 1.0."
+          },
+          "gameId": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Игра очереди. Формат uuid."
+          },
           "commands": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Command"
             },
-            "minItems": 0
+            "minItems": 0,
+            "maxItems": 100,
+            "description": "Очередные команды в порядке sequence. 0–100 элементов."
           },
           "acknowledgedThroughSequence": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 0,
+            "maximum": 2147483647,
+            "description": "Последний подряд подтверждённый completed/failed sequence. От 0 до 2147483647."
+          },
+          "hasMore": {
+            "type": "boolean",
+            "description": "За этой порцией есть другие команды."
           }
         },
         "required": [
+          "contractVersion",
+          "gameId",
           "commands",
-          "acknowledgedThroughSequence"
+          "acknowledgedThroughSequence",
+          "hasMore"
+        ]
+      },
+      "CommandReceiptRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "messageId": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Идентификатор неизменяемого сообщения; совпадает с Idempotency-Key. Формат uuid."
+          },
+          "gameId": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Игра сообщения; должна принадлежать bindingId. Формат uuid."
+          },
+          "participantId": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Команда сообщения; должна принадлежать bindingId. Формат uuid."
+          },
+          "phaseToken": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Токен фазы, к которой относится событие. Формат uuid."
+          },
+          "roundNumber": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647,
+            "description": "Раунд события. От 0 до 2147483647."
+          },
+          "gameMonth": {
+            "$ref": "#/components/schemas/GameMonth",
+            "description": "Игровой месяц по календарю раунда."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "processing",
+              "completed",
+              "failed"
+            ],
+            "description": "Результат исполнения этой команды. Значения: processing, completed, failed."
+          },
+          "erpDocumentIds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "minItems": 0,
+            "maxItems": 2000,
+            "uniqueItems": true,
+            "description": "GUID уже созданных документов; пустой массив допустим. 0–2000 элементов. Без повторов."
+          },
+          "snapshotId": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "resourceId принятого снимка, если команда завершает подготовку/фиксацию/итог. Формат uuid."
+          },
+          "appliedStateVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647,
+            "description": "Версия контекста, применённая при переходе, паузе или возобновлении. От 1 до 2147483647."
+          },
+          "supportedCapabilities": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "consistentSnapshot",
+                "phaseGuard",
+                "idempotentCommands",
+                "salesFacts",
+                "finalFinancials",
+                "automaticExecution",
+                "executionReports"
+              ]
+            },
+            "minItems": 0,
+            "maxItems": 7,
+            "uniqueItems": true,
+            "description": "Возможности ERP; обязательны при успешной подготовке. 0–7 элементов. Без повторов. Элементы: consistentSnapshot, phaseGuard, idempotentCommands, salesFacts, finalFinancials, automaticExecution, executionReports."
+          },
+          "errorCode": {
+            "$ref": "#/components/schemas/Code",
+            "description": "Обязательно при failed."
+          },
+          "errorMessage": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "description": "Причина failed без секретов. Длина 1–2000 символов."
+          }
+        },
+        "required": [
+          "messageId",
+          "gameId",
+          "participantId",
+          "phaseToken",
+          "roundNumber",
+          "gameMonth",
+          "status",
+          "erpDocumentIds"
         ],
-        "additionalProperties": false
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "failed"
+                }
+              },
+              "required": [
+                "status"
+              ]
+            },
+            "then": {
+              "required": [
+                "errorCode",
+                "errorMessage"
+              ]
+            }
+          }
+        ]
+      },
+      "PrepareGamePayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "settingsHash": {
+            "$ref": "#/components/schemas/Hash",
+            "description": "Должен совпасть с Context.settingsHash и локально вычисленным отпечатком."
+          },
+          "initialCash": {
+            "$ref": "#/components/schemas/Amount",
+            "description": "Стартовые деньги."
+          },
+          "currency": {
+            "type": "string",
+            "const": "RUB",
+            "description": "Валюта. Только RUB."
+          },
+          "balances": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InitialBalance"
+            },
+            "minItems": 1,
+            "maxItems": 2000,
+            "description": "Полный пакет начальных остатков; не изменения к текущим данным. 1–2000 элементов."
+          },
+          "initialPrices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InitialPrice"
+            },
+            "minItems": 4,
+            "maxItems": 4,
+            "description": "Все четыре начальные цены продажи. 4–4 элементов."
+          },
+          "seed": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Общий seed или fixed для фиксированного профиля. Длина 1–200 символов."
+          }
+        },
+        "required": [
+          "settingsHash",
+          "initialCash",
+          "currency",
+          "balances",
+          "initialPrices",
+          "seed"
+        ]
+      },
+      "InitialBalance": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "itemCode": {
+            "$ref": "#/components/schemas/Code",
+            "description": "Игровой код по приложению А."
+          },
+          "quantity": {
+            "$ref": "#/components/schemas/Quantity",
+            "description": "Количество; для готовой продукции целое."
+          },
+          "unitCode": {
+            "type": "string",
+            "enum": [
+              "pcs",
+              "set"
+            ],
+            "description": "Единица игрового профиля. Значения: pcs, set."
+          },
+          "warehouseId": {
+            "type": "string",
+            "enum": [
+              "purchases",
+              "finished_goods",
+              "workshop"
+            ],
+            "description": "Логический склад. Значения: purchases, finished_goods, workshop."
+          },
+          "unitCost": {
+            "$ref": "#/components/schemas/Amount",
+            "description": "Стоимость единицы для ввода остатков ERP, не цена продажи."
+          }
+        },
+        "required": [
+          "itemCode",
+          "quantity",
+          "unitCode",
+          "warehouseId",
+          "unitCost"
+        ]
+      },
+      "InitialPrice": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "productCode": {
+            "type": "string",
+            "enum": [
+              "CityRide",
+              "SportDrive",
+              "CargoMax",
+              "TourPro"
+            ],
+            "description": "Модель. Значения: CityRide, SportDrive, CargoMax, TourPro."
+          },
+          "price": {
+            "$ref": "#/components/schemas/PositiveAmount",
+            "description": "Цена продажи в налоговом режиме профиля."
+          }
+        },
+        "required": [
+          "productCode",
+          "price"
+        ]
+      },
+      "PhasePayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "phaseCode": {
+            "type": "string",
+            "enum": [
+              "initialization",
+              "initial_sales",
+              "planning",
+              "purchasing",
+              "production",
+              "sales",
+              "analysis"
+            ],
+            "description": "Разрешаемая фаза. Значения: initialization, initial_sales, planning, purchasing, production, sales, analysis."
+          },
+          "previousPhaseToken": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UUID"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Предыдущий токен; null только при первом открытии после подготовки."
+          },
+          "stateVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647,
+            "description": "Целевая версия состояния. От 1 до 2147483647."
+          },
+          "documentDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Дата новых документов внутри gameMonth. Формат date."
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Срок фазы в реальном времени. Формат date-time."
+          },
+          "settingsHash": {
+            "$ref": "#/components/schemas/Hash",
+            "description": "Отпечаток неизменных настроек."
+          }
+        },
+        "required": [
+          "phaseCode",
+          "previousPhaseToken",
+          "stateVersion",
+          "documentDate",
+          "deadline",
+          "settingsHash"
+        ]
+      },
+      "FreezePayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "phaseCode": {
+            "type": "string",
+            "enum": [
+              "initialization",
+              "initial_sales",
+              "planning",
+              "purchasing",
+              "production",
+              "sales",
+              "analysis"
+            ],
+            "description": "Фиксируемая текущая фаза. Значения: initialization, initial_sales, planning, purchasing, production, sales, analysis."
+          },
+          "documentDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Дата данных для контроля игрового периода. Формат date."
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Срок прекращения учебных изменений. Формат date-time."
+          },
+          "snapshotKind": {
+            "type": "string",
+            "enum": [
+              "frozen"
+            ],
+            "description": "Тип окончательного снимка. Значения: frozen."
+          },
+          "sourceVersion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Идентификатор фиксации, заданный сервером; ERP сохраняет его. Длина 1–200 символов."
+          }
+        },
+        "required": [
+          "phaseCode",
+          "documentDate",
+          "deadline",
+          "snapshotKind",
+          "sourceVersion"
+        ]
+      },
+      "CreateOrderPayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "allocationId": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Распределение рынка. Формат uuid."
+          },
+          "externalOrderId": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Хозяйственный ключ единственного заказа ERP. Формат uuid."
+          },
+          "currency": {
+            "type": "string",
+            "const": "RUB",
+            "description": "Валюта. Только RUB."
+          },
+          "documentDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Дата заказа. Формат date."
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderLine"
+            },
+            "minItems": 1,
+            "maxItems": 4,
+            "description": "Положительные строки заказа. 1–4 элементов."
+          }
+        },
+        "required": [
+          "allocationId",
+          "externalOrderId",
+          "currency",
+          "documentDate",
+          "lines"
+        ]
+      },
+      "OrderLine": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "productCode": {
+            "type": "string",
+            "enum": [
+              "CityRide",
+              "SportDrive",
+              "CargoMax",
+              "TourPro"
+            ],
+            "description": "Продукт; каждая модель не более одного раза. Значения: CityRide, SportDrive, CargoMax, TourPro."
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647,
+            "description": "Количество к поставке. От 1 до 2147483647."
+          },
+          "unitPrice": {
+            "$ref": "#/components/schemas/PositiveAmount",
+            "description": "Цена предложения; не пересчитывается по прайс-листу."
+          }
+        },
+        "required": [
+          "productCode",
+          "quantity",
+          "unitPrice"
+        ]
+      },
+      "PayRealizationPayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "erpRealizationId": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Проведённая реализация своей области. Формат uuid."
+          },
+          "paymentOperationId": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Уникальный хозяйственный ключ оплаты. Формат uuid."
+          },
+          "amount": {
+            "$ref": "#/components/schemas/PositiveAmount",
+            "description": "Сумма отнесения оплаты на реализацию, включая НДС при его наличии."
+          },
+          "currency": {
+            "type": "string",
+            "const": "RUB",
+            "description": "Валюта. Только RUB."
+          },
+          "documentDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Дата поступления денег. Формат date."
+          }
+        },
+        "required": [
+          "erpRealizationId",
+          "paymentOperationId",
+          "amount",
+          "currency",
+          "documentDate"
+        ]
+      },
+      "FinalSnapshotPayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "requireClosedMonth": {
+            "type": "boolean",
+            "const": true,
+            "description": "Должно быть true; незакрытый месяц вызывает failed. Только true."
+          },
+          "sourceVersion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Идентификатор финальной фиксации. Длина 1–200 символов."
+          }
+        },
+        "required": [
+          "requireClosedMonth",
+          "sourceVersion"
+        ]
+      },
+      "PausePayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "description": "Причина приостановки. Длина 1–2000 символов."
+          },
+          "stateVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647,
+            "description": "Целевая версия состояния. От 1 до 2147483647."
+          }
+        },
+        "required": [
+          "reason",
+          "stateVersion"
+        ]
+      },
+      "ResumePayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "phaseCode": {
+            "type": "string",
+            "enum": [
+              "initialization",
+              "initial_sales",
+              "planning",
+              "purchasing",
+              "production",
+              "sales",
+              "analysis"
+            ],
+            "description": "Возобновляемая фаза. Значения: initialization, initial_sales, planning, purchasing, production, sales, analysis."
+          },
+          "previousPhaseToken": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Токен приостановленной фазы. Формат uuid."
+          },
+          "stateVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647,
+            "description": "Новая целевая версия. От 1 до 2147483647."
+          },
+          "documentDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Игровая дата. Формат date."
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Новый реальный срок. Формат date-time."
+          },
+          "settingsHash": {
+            "$ref": "#/components/schemas/Hash",
+            "description": "Неизменный профиль."
+          }
+        },
+        "required": [
+          "phaseCode",
+          "previousPhaseToken",
+          "stateVersion",
+          "documentDate",
+          "deadline",
+          "settingsHash"
+        ]
+      },
+      "SalesEventRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "messageId": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Идентификатор неизменяемого сообщения; совпадает с Idempotency-Key. Формат uuid."
+          },
+          "gameId": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Игра сообщения; должна принадлежать bindingId. Формат uuid."
+          },
+          "participantId": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Команда сообщения; должна принадлежать bindingId. Формат uuid."
+          },
+          "phaseToken": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Токен фазы, к которой относится событие. Формат uuid."
+          },
+          "roundNumber": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647,
+            "description": "Раунд события. От 0 до 2147483647."
+          },
+          "gameMonth": {
+            "$ref": "#/components/schemas/GameMonth",
+            "description": "Игровой месяц по календарю раунда."
+          },
+          "allocationId": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Распределение, к которому относится заказ. Формат uuid."
+          },
+          "erpOrderId": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Заказ ERP. Формат uuid."
+          },
+          "erpRealizationId": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Реализация ERP. Формат uuid."
+          },
+          "stateVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647,
+            "description": "Возрастающая версия состояния данной реализации, включая изменения оплат. От 1 до 2147483647."
+          },
+          "capturedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Реальное время текущего состояния. Формат date-time."
+          },
+          "posted": {
+            "type": "boolean",
+            "description": "Проведена ли реализация."
+          },
+          "currency": {
+            "type": "string",
+            "const": "RUB",
+            "description": "Валюта. Только RUB."
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SalesLine"
+            },
+            "minItems": 1,
+            "maxItems": 4,
+            "description": "Полное состояние строк документа, не приращение. 1–4 элементов."
+          },
+          "payments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PaymentFact"
+            },
+            "minItems": 0,
+            "maxItems": 2000,
+            "description": "Полное состояние связанных оплат, не приращение. 0–2000 элементов."
+          }
+        },
+        "required": [
+          "messageId",
+          "gameId",
+          "participantId",
+          "phaseToken",
+          "roundNumber",
+          "gameMonth",
+          "allocationId",
+          "erpOrderId",
+          "erpRealizationId",
+          "stateVersion",
+          "capturedAt",
+          "posted",
+          "currency",
+          "lines",
+          "payments"
+        ]
+      },
+      "SalesLine": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "productCode": {
+            "type": "string",
+            "enum": [
+              "CityRide",
+              "SportDrive",
+              "CargoMax",
+              "TourPro"
+            ],
+            "description": "Модель. Значения: CityRide, SportDrive, CargoMax, TourPro."
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647,
+            "description": "Текущее количество по документу; 0 допустим при отмене. От 0 до 2147483647."
+          },
+          "unitPrice": {
+            "$ref": "#/components/schemas/PositiveAmount",
+            "description": "Цена учёта; согласуется с заказом."
+          },
+          "lineAmount": {
+            "$ref": "#/components/schemas/Amount",
+            "description": "Сумма строки с НДС, округлённая до копейки; при no_vat обычная сумма."
+          }
+        },
+        "required": [
+          "productCode",
+          "quantity",
+          "unitPrice",
+          "lineAmount"
+        ]
+      },
+      "PaymentFact": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "erpPaymentId": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "GUID платёжного документа. Формат uuid."
+          },
+          "amount": {
+            "$ref": "#/components/schemas/Amount",
+            "description": "Сумма отнесения на эту реализацию, а не сумма всего документа."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "posted",
+              "reversed"
+            ],
+            "description": "Текущее проведение или отмена. Значения: posted, reversed."
+          }
+        },
+        "required": [
+          "erpPaymentId",
+          "amount",
+          "status"
+        ]
+      },
+      "ExecutionEventRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "messageId": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Идентификатор неизменяемого сообщения; совпадает с Idempotency-Key. Формат uuid."
+          },
+          "gameId": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Игра сообщения; должна принадлежать bindingId. Формат uuid."
+          },
+          "participantId": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Команда сообщения; должна принадлежать bindingId. Формат uuid."
+          },
+          "phaseToken": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Токен фазы, к которой относится событие. Формат uuid."
+          },
+          "roundNumber": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647,
+            "description": "Раунд события. От 0 до 2147483647."
+          },
+          "gameMonth": {
+            "$ref": "#/components/schemas/GameMonth",
+            "description": "Игровой месяц по календарю раунда."
+          },
+          "operationId": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Единственная локальная цепочка; сохраняется при паузе и повторе. Формат uuid."
+          },
+          "executionVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647,
+            "description": "Возрастающая версия полного состояния цепочки. От 1 до 2147483647."
+          },
+          "executionKind": {
+            "type": "string",
+            "enum": [
+              "purchasing",
+              "production",
+              "sales",
+              "month_closing"
+            ],
+            "description": "Вид цепочки. Значения: purchasing, production, sales, month_closing."
+          },
+          "planId": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Сохраняемый идентификатор утверждённого плана для закупки/производства. Формат uuid."
+          },
+          "planVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647,
+            "description": "Зафиксированная версия плана. От 1 до 2147483647."
+          },
+          "erpOrderId": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Заказ рынка для цепочки sales. Формат uuid."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "waiting",
+              "paused",
+              "completed",
+              "failed"
+            ],
+            "description": "Состояние цепочки. Значения: queued, running, waiting, paused, completed, failed."
+          },
+          "capturedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Реальное время состояния. Формат date-time."
+          },
+          "adjustments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlanAdjustment"
+            },
+            "minItems": 0,
+            "maxItems": 2000,
+            "description": "Полный перечень исходных и исполняемых строк плана. 0–2000 элементов."
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExecutionStep"
+            },
+            "minItems": 1,
+            "maxItems": 100,
+            "description": "Полный набор шагов в порядке исполнения. 1–100 элементов."
+          },
+          "errorCode": {
+            "$ref": "#/components/schemas/Code",
+            "description": "Обязательно при failed."
+          },
+          "errorMessage": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "description": "Причина failed. Длина 1–2000 символов."
+          }
+        },
+        "required": [
+          "messageId",
+          "gameId",
+          "participantId",
+          "phaseToken",
+          "roundNumber",
+          "gameMonth",
+          "operationId",
+          "executionVersion",
+          "executionKind",
+          "status",
+          "capturedAt",
+          "adjustments",
+          "steps"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "failed"
+                }
+              },
+              "required": [
+                "status"
+              ]
+            },
+            "then": {
+              "required": [
+                "errorCode",
+                "errorMessage"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "executionKind": {
+                  "const": "purchasing"
+                }
+              },
+              "required": [
+                "executionKind"
+              ]
+            },
+            "then": {
+              "required": [
+                "planId",
+                "planVersion"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "executionKind": {
+                  "const": "production"
+                }
+              },
+              "required": [
+                "executionKind"
+              ]
+            },
+            "then": {
+              "required": [
+                "planId",
+                "planVersion"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "executionKind": {
+                  "const": "sales"
+                }
+              },
+              "required": [
+                "executionKind"
+              ]
+            },
+            "then": {
+              "required": [
+                "erpOrderId"
+              ]
+            }
+          }
+        ]
+      },
+      "ExecutionStep": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "stepCode": {
+            "type": "string",
+            "enum": [
+              "create_supplier_order",
+              "receive_components",
+              "pay_supplier",
+              "create_production_order",
+              "issue_materials",
+              "produce_goods",
+              "move_goods",
+              "ship_goods",
+              "create_realization",
+              "await_customer_payment",
+              "close_month"
+            ],
+            "description": "Операция цепочки. Значения: create_supplier_order, receive_components, pay_supplier, create_production_order, issue_materials, produce_goods, move_goods, ship_goods, create_realization, await_customer_payment, close_month."
+          },
+          "businessOperationId": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Сохраняемый хозяйственный ключ шага. Формат uuid."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "running",
+              "completed",
+              "failed",
+              "skipped"
+            ],
+            "description": "Состояние шага. Значения: pending, running, completed, failed, skipped."
+          },
+          "erpDocumentIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": "Ссылки документов шага. 0–2000 элементов. Без повторов."
+            },
+            "minItems": 0,
+            "maxItems": 2000,
+            "uniqueItems": true,
+            "description": "Ссылки документов шага. 0–2000 элементов. Без повторов."
+          },
+          "errorCode": {
+            "$ref": "#/components/schemas/Code",
+            "description": "Обязательно при failed."
+          },
+          "errorMessage": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "description": "Причина failed. Длина 1–2000 символов."
+          }
+        },
+        "required": [
+          "stepCode",
+          "businessOperationId",
+          "status",
+          "erpDocumentIds"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "failed"
+                }
+              },
+              "required": [
+                "status"
+              ]
+            },
+            "then": {
+              "required": [
+                "errorCode",
+                "errorMessage"
+              ]
+            }
+          }
+        ]
+      },
+      "PlanAdjustment": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "itemCode": {
+            "$ref": "#/components/schemas/Code",
+            "description": "Комплектующая закупки или модель выпуска."
+          },
+          "unitCode": {
+            "type": "string",
+            "enum": [
+              "pcs",
+              "set"
+            ],
+            "description": "Единица. Значения: pcs, set."
+          },
+          "originalQuantity": {
+            "$ref": "#/components/schemas/Quantity",
+            "description": "Количество до проверки ресурсов."
+          },
+          "effectiveQuantity": {
+            "$ref": "#/components/schemas/Quantity",
+            "description": "Фактически принятое к исполнению количество."
+          },
+          "reasonCode": {
+            "type": "string",
+            "enum": [
+              "unchanged",
+              "insufficient_cash",
+              "insufficient_materials"
+            ],
+            "description": "Причина сокращения. Значения: unchanged, insufficient_cash, insufficient_materials."
+          }
+        },
+        "required": [
+          "itemCode",
+          "unitCode",
+          "originalQuantity",
+          "effectiveQuantity",
+          "reasonCode"
+        ]
       }
     }
   }

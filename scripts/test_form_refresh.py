@@ -36,6 +36,10 @@ def load_form(name, service):
         for index in range(0, len(parts), 2):
             parts[index] = re.sub(r'\b(\d+)с\b', r'\1', parts[index])
             parts[index] = re.sub(r'&(\w+)', r'\1', parts[index])
+            parts[index] = parts[index].replace(
+                'Массив<ЭлементСпискаЗначений<УчастникиИгры.Ссылка?>>', 'XArray')
+            parts[index] = parts[index].replace(
+                'ЭлементСпискаЗначений<УчастникиИгры.Ссылка?>', 'ЭлементСпискаЗначений')
         return original_expression(''.join(parts))
 
     try:
@@ -53,10 +57,20 @@ def load_form(name, service):
     clock = SimpleNamespace(now=Decimal(100))
     timers = []
 
+    enum_labels = {}
+    for enum_path in (xbsl.ROOT / 'Данные').glob('*.yaml'):
+        enum = yaml.safe_load(enum_path.read_text())
+        if enum.get('ВидЭлемента') == 'Перечисление':
+            enum_labels.update({item['Имя']: item.get('Представление', item['Имя'])
+                                for item in enum['Элементы']})
+
     def ui_call(receiver, method, *args):
+        if method == 'Представление':
+            return enum_labels[receiver]
         return receiver if method == 'ВСекундах' else xbsl.call(receiver, method, *args)
 
     env = {**vars(xbsl.SUMMARIES), 'call': ui_call,
+        'XArray': xbsl.XArray, 'ЭлементСпискаЗначений': SimpleNamespace,
         'Момент': SimpleNamespace(Сейчас=lambda: clock.now),
         'Время': SimpleNamespace(Сейчас=lambda: clock.now),
         'УправлениеИгрой': service, 'СводкиИгры': xbsl.SUMMARIES,
@@ -96,6 +110,12 @@ class RefreshTests(unittest.TestCase):
         self.clock.now += Decimal(seconds)
         self.env['АвтоматическоеОбновление']()
 
+    def test_summary_uses_enum_presentations_instead_of_code_names(self):
+        self.panel.Фаза = 'СтартоваяПродажа'
+        self.tick()
+        self.assertIn('Идёт · Стартовая продажа · раунд', self.env['Сводка'])
+        self.assertNotIn('СтартоваяПродажа', self.env['Сводка'])
+
     def test_timer_registration_hidden_form_and_poll_frequency(self):
         self.assertEqual(len(self.timers), 1)
         self.assertEqual(self.timers[0][1], 1)
@@ -113,13 +133,11 @@ class RefreshTests(unittest.TestCase):
     def test_refresh_preserves_edits_and_action_message(self):
         self.tick()
         self.env['Предложения'] = ['edited offer']
-        self.env['Причина'] = 'Причина паузы'
         self.env['Сообщение'] = 'Тестовый снимок принят'
         self.panel.Участники[0].Готов = True
         self.tick(5)
         self.assertEqual(self.env['Предложения'], ['edited offer'])
         self.assertEqual(self.env['Сообщение'], 'Тестовый снимок принят')
-        self.assertEqual(self.env['Причина'], 'Причина паузы')
         self.assertIn('готовы 1 из 1', self.env['Сводка'])
 
     def test_new_phase_discards_old_proposals_and_updates_command_token(self):

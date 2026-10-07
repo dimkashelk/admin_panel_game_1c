@@ -1,0 +1,2289 @@
+{
+  "source": "ТЗ_Расширение_ERP.docx, приложение В",
+  "schemas": {
+    "Context": [
+      [
+        "contractVersion",
+        "string",
+        "Да",
+        "Версия контракта. Только 1.0."
+      ],
+      [
+        "bindingId",
+        "string",
+        "Да",
+        "Назначенная сервисному пользователю привязка. Формат uuid."
+      ],
+      [
+        "gameId",
+        "string",
+        "Да",
+        "Идентификатор текущей игры. Формат uuid."
+      ],
+      [
+        "participantId",
+        "string",
+        "Да",
+        "Идентификатор команды. Формат uuid."
+      ],
+      [
+        "roundNumber",
+        "integer",
+        "Да",
+        "Текущий раунд. От 0 до 2147483647."
+      ],
+      [
+        "phaseCode",
+        "string",
+        "Да",
+        "Текущая фаза. Значения: initialization, initial_sales, planning, purchasing, production, sales, analysis."
+      ],
+      [
+        "phaseToken",
+        "string",
+        "Да",
+        "Токен экземпляра фазы. Формат uuid."
+      ],
+      [
+        "stateVersion",
+        "integer",
+        "Да",
+        "Версия управления игрой; возрастает при переходах. От 1 до 2147483647."
+      ],
+      [
+        "gameState",
+        "string",
+        "Да",
+        "Состояние игры. Значения: draft, preparing, running, paused, completed, cancelled."
+      ],
+      [
+        "gameMonth",
+        "GameMonth",
+        "Да",
+        "Месяц текущего раунда."
+      ],
+      [
+        "documentDate",
+        "string",
+        "Да",
+        "Дата для текущих учебных документов. Формат date."
+      ],
+      [
+        "deadline",
+        "string или null",
+        "Да",
+        "Реальный срок фазы; null в preparing/draft или при паузе."
+      ],
+      [
+        "serverTime",
+        "string",
+        "Да",
+        "Текущее время сервера Элемента для сверки часов. Формат date-time."
+      ],
+      [
+        "settingsHash",
+        "Hash",
+        "Да",
+        "Отпечаток GameSettings по правилу В 1."
+      ],
+      [
+        "settings",
+        "GameSettings",
+        "Да",
+        "Полный согласованный профиль игры."
+      ],
+      [
+        "capabilities",
+        "string[]",
+        "Да",
+        "Возможности API Элемента; массив уникальных кодов. 0–7 элементов. Без повторов. Элементы: consistentSnapshot, phaseGuard, idempotentCommands, salesFacts, finalFinancials, automaticExecution, executionReports."
+      ]
+    ],
+    "GameSettings": [
+      [
+        "profileId",
+        "Code",
+        "Да",
+        "Идентификатор согласованного профиля ERP."
+      ],
+      [
+        "profileVersion",
+        "string",
+        "Да",
+        "Версия профиля; непустая строка. Длина 1–50 символов."
+      ],
+      [
+        "executionMode",
+        "string",
+        "Да",
+        "Базовый или автоматический режим. Значения: basic, automatic."
+      ],
+      [
+        "priceFixation",
+        "string",
+        "Да",
+        "Момент фиксации цены. Значения: after_planning, before_sales."
+      ],
+      [
+        "currency",
+        "string",
+        "Да",
+        "Единственная валюта. Только RUB."
+      ],
+      [
+        "taxMode",
+        "string",
+        "Да",
+        "Правило НДС для цен, сумм заказа и оплаты. Значения: no_vat, price_includes_vat, price_excludes_vat."
+      ],
+      [
+        "roundCount",
+        "integer",
+        "Да",
+        "Количество производственных раундов без раунда 0. От 1 до 100."
+      ],
+      [
+        "calendar",
+        "CalendarRound[]",
+        "Да",
+        "Полный игровой календарь. 2–101 элементов."
+      ],
+      [
+        "products",
+        "ProductRule[]",
+        "Да",
+        "Правила всех четырёх моделей. 4–4 элементов."
+      ],
+      [
+        "procurementReduction",
+        "string",
+        "Да",
+        "Алгоритм сокращения закупок FR-47; активен только в automatic. Значения: cheapest_item_first_v1."
+      ],
+      [
+        "productionReduction",
+        "string",
+        "Да",
+        "Алгоритм сокращения выпуска FR-47; активен только в automatic. Значения: product_code_first_v1."
+      ],
+      [
+        "allowSupplierDebt",
+        "boolean",
+        "Да",
+        "Для этой версии false: обязательные долги поставщику погашаются."
+      ],
+      [
+        "allowCustomerDebt",
+        "boolean",
+        "Да",
+        "Для этой версии false: отгруженное оплачивается до final."
+      ],
+      [
+        "pollIntervalSeconds",
+        "integer",
+        "Да",
+        "Интервал опроса. От 1 до 300."
+      ],
+      [
+        "requestTimeoutSeconds",
+        "integer",
+        "Да",
+        "Тайм-аут запроса. От 1 до 120."
+      ],
+      [
+        "connectionLostSeconds",
+        "integer",
+        "Да",
+        "Порог безопасного ожидания. От 10 до 3600."
+      ],
+      [
+        "maxClockSkewSeconds",
+        "integer",
+        "Да",
+        "Допустимое расхождение часов ERP и Элемента. От 1 до 60."
+      ]
+    ],
+    "CalendarRound": [
+      [
+        "roundNumber",
+        "integer",
+        "Да",
+        "Номер раунда; 0 — стартовая продажа. От 0 до 2147483647."
+      ],
+      [
+        "gameMonth",
+        "GameMonth",
+        "Да",
+        "Месяц учёта этого раунда."
+      ],
+      [
+        "documentDate",
+        "string",
+        "Да",
+        "Базовая игровая дата документов; YYYY-MM-DD. Формат date."
+      ]
+    ],
+    "ProductRule": [
+      [
+        "productCode",
+        "string",
+        "Да",
+        "Код готовой продукции. Значения: CityRide, SportDrive, CargoMax, TourPro."
+      ],
+      [
+        "minPrice",
+        "PositiveAmount",
+        "Да",
+        "Минимальная допустимая цена предложения."
+      ],
+      [
+        "maxPrice",
+        "PositiveAmount",
+        "Да",
+        "Максимальная допустимая цена предложения."
+      ],
+      [
+        "vatRate",
+        "string",
+        "Да",
+        "Ставка НДС в процентах; например 0.00. Значение от 0 до 100. Шаблон: ^(0|[1-9][0-9]{0,2})\\.[0-9]{2}$"
+      ]
+    ],
+    "SnapshotRequest": [
+      [
+        "messageId",
+        "string",
+        "Да",
+        "Идентификатор неизменяемого сообщения; совпадает с Idempotency-Key. Формат uuid."
+      ],
+      [
+        "gameId",
+        "string",
+        "Да",
+        "Игра сообщения; должна принадлежать bindingId. Формат uuid."
+      ],
+      [
+        "participantId",
+        "string",
+        "Да",
+        "Команда сообщения; должна принадлежать bindingId. Формат uuid."
+      ],
+      [
+        "phaseToken",
+        "string",
+        "Да",
+        "Токен фазы, к которой относится событие. Формат uuid."
+      ],
+      [
+        "roundNumber",
+        "integer",
+        "Да",
+        "Раунд события. От 0 до 2147483647."
+      ],
+      [
+        "gameMonth",
+        "GameMonth",
+        "Да",
+        "Игровой месяц по календарю раунда."
+      ],
+      [
+        "sourceVersion",
+        "string",
+        "Да",
+        "Устойчивая версия сохранённой фиксации ERP. Длина 1–200 символов."
+      ],
+      [
+        "capturedAt",
+        "string",
+        "Да",
+        "Реальное время формирования данных. Формат date-time."
+      ],
+      [
+        "kind",
+        "string",
+        "Да",
+        "Назначение снимка. Значения: monitoring, frozen, final."
+      ],
+      [
+        "currency",
+        "string",
+        "Да",
+        "Валюта. Только RUB."
+      ],
+      [
+        "freezeCommandId",
+        "string",
+        "Нет*",
+        "Команда freeze_phase либо request_final_snapshot, разрешившая фиксацию. Формат uuid."
+      ],
+      [
+        "offers",
+        "Offer[]",
+        "Да",
+        "Все четыре модели, включая нулевые запасы. 4–4 элементов."
+      ],
+      [
+        "balances",
+        "Balance[]",
+        "Да",
+        "Полные остатки профиля по трём складам, включая нулевые строки. 0–2000 элементов."
+      ],
+      [
+        "financials",
+        "Financials",
+        "Нет*",
+        "Обязательно при kind=final."
+      ]
+    ],
+    "Offer": [
+      [
+        "productCode",
+        "string",
+        "Да",
+        "Код модели. Значения: CityRide, SportDrive, CargoMax, TourPro."
+      ],
+      [
+        "price",
+        "PositiveAmount",
+        "Да",
+        "Зафиксированная цена в налоговом режиме GameSettings."
+      ],
+      [
+        "availableQuantity",
+        "integer",
+        "Да",
+        "Доступное к новому заказу количество велосипедов. От 0 до 2147483647."
+      ]
+    ],
+    "Balance": [
+      [
+        "itemCode",
+        "Code",
+        "Да",
+        "Продукт или комплектующая из профиля."
+      ],
+      [
+        "quantity",
+        "Quantity",
+        "Да",
+        "Количество после пересчёта в игровую единицу."
+      ],
+      [
+        "unitCode",
+        "string",
+        "Да",
+        "pcs — штука; set — комплект. Значения: pcs, set."
+      ],
+      [
+        "warehouseId",
+        "string",
+        "Да",
+        "Устойчивый код склада; это не GUID склада ERP. Значения: purchases, finished_goods, workshop."
+      ],
+      [
+        "characteristicId",
+        "string",
+        "Нет*",
+        "GUID характеристики ERP при использовании характеристик. Формат uuid."
+      ]
+    ],
+    "Financials": [
+      [
+        "cash",
+        "SignedAmount",
+        "Да",
+        "Фактический остаток по игровым кассам и счетам на конец месяца."
+      ],
+      [
+        "profit",
+        "SignedAmount",
+        "Да",
+        "Прибыль игрового месяца после закрытия, по управленческому учёту."
+      ],
+      [
+        "customerDebt",
+        "Amount",
+        "Да",
+        "Непогашенная задолженность покупателя на конец месяца."
+      ],
+      [
+        "supplierDebt",
+        "Amount",
+        "Да",
+        "Непогашенная задолженность поставщику на конец месяца."
+      ],
+      [
+        "monthClosed",
+        "boolean",
+        "Да",
+        "Подтверждено успешное выполнение обязательного закрытия."
+      ]
+    ],
+    "ReadinessRequest": [
+      [
+        "messageId",
+        "string",
+        "Да",
+        "Идентификатор неизменяемого сообщения; совпадает с Idempotency-Key. Формат uuid."
+      ],
+      [
+        "gameId",
+        "string",
+        "Да",
+        "Игра сообщения; должна принадлежать bindingId. Формат uuid."
+      ],
+      [
+        "participantId",
+        "string",
+        "Да",
+        "Команда сообщения; должна принадлежать bindingId. Формат uuid."
+      ],
+      [
+        "phaseToken",
+        "string",
+        "Да",
+        "Токен фазы, к которой относится событие. Формат uuid."
+      ],
+      [
+        "roundNumber",
+        "integer",
+        "Да",
+        "Раунд события. От 0 до 2147483647."
+      ],
+      [
+        "gameMonth",
+        "GameMonth",
+        "Да",
+        "Игровой месяц по календарю раунда."
+      ],
+      [
+        "snapshotId",
+        "string",
+        "Да",
+        "resourceId снимка, принятого для этой фазы и области. Формат uuid."
+      ],
+      [
+        "ready",
+        "boolean",
+        "Да",
+        "Готовность участника."
+      ],
+      [
+        "reason",
+        "string",
+        "Нет*",
+        "Причина ready=false или отзыва готовности. Длина 1–2000 символов."
+      ]
+    ],
+    "Accepted": [
+      [
+        "contractVersion",
+        "string",
+        "Да",
+        "Версия. Только 1.0."
+      ],
+      [
+        "messageId",
+        "string",
+        "Да",
+        "Принятое сообщение. Формат uuid."
+      ],
+      [
+        "resourceId",
+        "string",
+        "Да",
+        "Сохранённый ресурс сервера; используется как snapshotId для снимка. Формат uuid."
+      ],
+      [
+        "replayed",
+        "boolean",
+        "Да",
+        "false при первом принятии; true при идентичном повторе."
+      ]
+    ],
+    "Error": [
+      [
+        "contractVersion",
+        "string",
+        "Да",
+        "Версия. Только 1.0."
+      ],
+      [
+        "code",
+        "Code",
+        "Да",
+        "Код из таблицы ошибок В 11."
+      ],
+      [
+        "message",
+        "string",
+        "Да",
+        "Понятное описание ошибки. Длина 1–2000 символов."
+      ],
+      [
+        "correlationId",
+        "string",
+        "Да",
+        "Идентификатор диагностики сервера. Формат uuid."
+      ],
+      [
+        "details",
+        "FieldError[]",
+        "Нет*",
+        "Ошибки полей; может отсутствовать. 0–100 элементов."
+      ]
+    ],
+    "FieldError": [
+      [
+        "field",
+        "string",
+        "Да",
+        "Путь JSON, например offers[0].price. Длина 1–200 символов."
+      ],
+      [
+        "code",
+        "Code",
+        "Да",
+        "Код нарушения."
+      ],
+      [
+        "message",
+        "string",
+        "Да",
+        "Описание нарушения без секретов. Длина 1–2000 символов."
+      ]
+    ],
+    "Command": [
+      [
+        "commandId",
+        "string",
+        "Да",
+        "Уникальный идентификатор команды. Формат uuid."
+      ],
+      [
+        "gameId",
+        "string",
+        "Да",
+        "Игра; обязательна даже при известном bindingId. Формат uuid."
+      ],
+      [
+        "participantId",
+        "string",
+        "Да",
+        "Команда. Формат uuid."
+      ],
+      [
+        "sequence",
+        "integer",
+        "Да",
+        "Порядковый номер внутри bindingId+gameId. От 1 до 2147483647."
+      ],
+      [
+        "phaseToken",
+        "string",
+        "Да",
+        "Токен команды; для open/resume — целевой токен. Формат uuid."
+      ],
+      [
+        "roundNumber",
+        "integer",
+        "Да",
+        "Раунд команды. От 0 до 2147483647."
+      ],
+      [
+        "gameMonth",
+        "GameMonth",
+        "Да",
+        "Месяц раунда."
+      ],
+      [
+        "issuedAt",
+        "string",
+        "Да",
+        "Реальное время выдачи. Формат date-time."
+      ],
+      [
+        "kind",
+        "string",
+        "Да",
+        "Вид команды. Значения: prepare_game, open_phase, freeze_phase, create_customer_order, pay_realization, request_final_snapshot, pause_game, resume_game."
+      ],
+      [
+        "payload",
+        "object",
+        "Да",
+        "Строго одна схема полезной нагрузки из В 7; произвольные поля запрещены."
+      ]
+    ],
+    "CommandsResponse": [
+      [
+        "contractVersion",
+        "string",
+        "Да",
+        "Версия. Только 1.0."
+      ],
+      [
+        "gameId",
+        "string",
+        "Да",
+        "Игра очереди. Формат uuid."
+      ],
+      [
+        "commands",
+        "Command[]",
+        "Да",
+        "Очередные команды в порядке sequence. 0–100 элементов."
+      ],
+      [
+        "acknowledgedThroughSequence",
+        "integer",
+        "Да",
+        "Последний подряд подтверждённый completed/failed sequence. От 0 до 2147483647."
+      ],
+      [
+        "hasMore",
+        "boolean",
+        "Да",
+        "За этой порцией есть другие команды."
+      ]
+    ],
+    "CommandReceiptRequest": [
+      [
+        "messageId",
+        "string",
+        "Да",
+        "Идентификатор неизменяемого сообщения; совпадает с Idempotency-Key. Формат uuid."
+      ],
+      [
+        "gameId",
+        "string",
+        "Да",
+        "Игра сообщения; должна принадлежать bindingId. Формат uuid."
+      ],
+      [
+        "participantId",
+        "string",
+        "Да",
+        "Команда сообщения; должна принадлежать bindingId. Формат uuid."
+      ],
+      [
+        "phaseToken",
+        "string",
+        "Да",
+        "Токен фазы, к которой относится событие. Формат uuid."
+      ],
+      [
+        "roundNumber",
+        "integer",
+        "Да",
+        "Раунд события. От 0 до 2147483647."
+      ],
+      [
+        "gameMonth",
+        "GameMonth",
+        "Да",
+        "Игровой месяц по календарю раунда."
+      ],
+      [
+        "status",
+        "string",
+        "Да",
+        "Результат исполнения этой команды. Значения: processing, completed, failed."
+      ],
+      [
+        "erpDocumentIds",
+        "string[]",
+        "Да",
+        "GUID уже созданных документов; пустой массив допустим. 0–2000 элементов. Без повторов."
+      ],
+      [
+        "snapshotId",
+        "string",
+        "Нет*",
+        "resourceId принятого снимка, если команда завершает подготовку/фиксацию/итог. Формат uuid."
+      ],
+      [
+        "appliedStateVersion",
+        "integer",
+        "Нет*",
+        "Версия контекста, применённая при переходе, паузе или возобновлении. От 1 до 2147483647."
+      ],
+      [
+        "supportedCapabilities",
+        "string[]",
+        "Нет*",
+        "Возможности ERP; обязательны при успешной подготовке. 0–7 элементов. Без повторов. Элементы: consistentSnapshot, phaseGuard, idempotentCommands, salesFacts, finalFinancials, automaticExecution, executionReports."
+      ],
+      [
+        "errorCode",
+        "Code",
+        "Нет*",
+        "Обязательно при failed."
+      ],
+      [
+        "errorMessage",
+        "string",
+        "Нет*",
+        "Причина failed без секретов. Длина 1–2000 символов."
+      ]
+    ],
+    "PrepareGamePayload": [
+      [
+        "settingsHash",
+        "Hash",
+        "Да",
+        "Должен совпасть с Context.settingsHash и локально вычисленным отпечатком."
+      ],
+      [
+        "initialCash",
+        "Amount",
+        "Да",
+        "Стартовые деньги."
+      ],
+      [
+        "currency",
+        "string",
+        "Да",
+        "Валюта. Только RUB."
+      ],
+      [
+        "balances",
+        "InitialBalance[]",
+        "Да",
+        "Полный пакет начальных остатков; не изменения к текущим данным. 1–2000 элементов."
+      ],
+      [
+        "initialPrices",
+        "InitialPrice[]",
+        "Да",
+        "Все четыре начальные цены продажи. 4–4 элементов."
+      ],
+      [
+        "seed",
+        "string",
+        "Да",
+        "Общий seed или fixed для фиксированного профиля. Длина 1–200 символов."
+      ]
+    ],
+    "InitialBalance": [
+      [
+        "itemCode",
+        "Code",
+        "Да",
+        "Игровой код по приложению А."
+      ],
+      [
+        "quantity",
+        "Quantity",
+        "Да",
+        "Количество; для готовой продукции целое."
+      ],
+      [
+        "unitCode",
+        "string",
+        "Да",
+        "Единица игрового профиля. Значения: pcs, set."
+      ],
+      [
+        "warehouseId",
+        "string",
+        "Да",
+        "Логический склад. Значения: purchases, finished_goods, workshop."
+      ],
+      [
+        "unitCost",
+        "Amount",
+        "Да",
+        "Стоимость единицы для ввода остатков ERP, не цена продажи."
+      ]
+    ],
+    "InitialPrice": [
+      [
+        "productCode",
+        "string",
+        "Да",
+        "Модель. Значения: CityRide, SportDrive, CargoMax, TourPro."
+      ],
+      [
+        "price",
+        "PositiveAmount",
+        "Да",
+        "Цена продажи в налоговом режиме профиля."
+      ]
+    ],
+    "PhasePayload": [
+      [
+        "phaseCode",
+        "string",
+        "Да",
+        "Разрешаемая фаза. Значения: initialization, initial_sales, planning, purchasing, production, sales, analysis."
+      ],
+      [
+        "previousPhaseToken",
+        "string или null",
+        "Да",
+        "Предыдущий токен; null только при первом открытии после подготовки."
+      ],
+      [
+        "stateVersion",
+        "integer",
+        "Да",
+        "Целевая версия состояния. От 1 до 2147483647."
+      ],
+      [
+        "documentDate",
+        "string",
+        "Да",
+        "Дата новых документов внутри gameMonth. Формат date."
+      ],
+      [
+        "deadline",
+        "string",
+        "Да",
+        "Срок фазы в реальном времени. Формат date-time."
+      ],
+      [
+        "settingsHash",
+        "Hash",
+        "Да",
+        "Отпечаток неизменных настроек."
+      ]
+    ],
+    "FreezePayload": [
+      [
+        "phaseCode",
+        "string",
+        "Да",
+        "Фиксируемая текущая фаза. Значения: initialization, initial_sales, planning, purchasing, production, sales, analysis."
+      ],
+      [
+        "documentDate",
+        "string",
+        "Да",
+        "Дата данных для контроля игрового периода. Формат date."
+      ],
+      [
+        "deadline",
+        "string",
+        "Да",
+        "Срок прекращения учебных изменений. Формат date-time."
+      ],
+      [
+        "snapshotKind",
+        "string",
+        "Да",
+        "Тип окончательного снимка. Значения: frozen."
+      ],
+      [
+        "sourceVersion",
+        "string",
+        "Да",
+        "Идентификатор фиксации, заданный сервером; ERP сохраняет его. Длина 1–200 символов."
+      ]
+    ],
+    "CreateOrderPayload": [
+      [
+        "allocationId",
+        "string",
+        "Да",
+        "Распределение рынка. Формат uuid."
+      ],
+      [
+        "externalOrderId",
+        "string",
+        "Да",
+        "Хозяйственный ключ единственного заказа ERP. Формат uuid."
+      ],
+      [
+        "currency",
+        "string",
+        "Да",
+        "Валюта. Только RUB."
+      ],
+      [
+        "documentDate",
+        "string",
+        "Да",
+        "Дата заказа. Формат date."
+      ],
+      [
+        "lines",
+        "OrderLine[]",
+        "Да",
+        "Положительные строки заказа. 1–4 элементов."
+      ]
+    ],
+    "OrderLine": [
+      [
+        "productCode",
+        "string",
+        "Да",
+        "Продукт; каждая модель не более одного раза. Значения: CityRide, SportDrive, CargoMax, TourPro."
+      ],
+      [
+        "quantity",
+        "integer",
+        "Да",
+        "Количество к поставке. От 1 до 2147483647."
+      ],
+      [
+        "unitPrice",
+        "PositiveAmount",
+        "Да",
+        "Цена предложения; не пересчитывается по прайс-листу."
+      ]
+    ],
+    "PayRealizationPayload": [
+      [
+        "erpRealizationId",
+        "string",
+        "Да",
+        "Проведённая реализация своей области. Формат uuid."
+      ],
+      [
+        "paymentOperationId",
+        "string",
+        "Да",
+        "Уникальный хозяйственный ключ оплаты. Формат uuid."
+      ],
+      [
+        "amount",
+        "PositiveAmount",
+        "Да",
+        "Сумма отнесения оплаты на реализацию, включая НДС при его наличии."
+      ],
+      [
+        "currency",
+        "string",
+        "Да",
+        "Валюта. Только RUB."
+      ],
+      [
+        "documentDate",
+        "string",
+        "Да",
+        "Дата поступления денег. Формат date."
+      ]
+    ],
+    "FinalSnapshotPayload": [
+      [
+        "requireClosedMonth",
+        "boolean",
+        "Да",
+        "Должно быть true; незакрытый месяц вызывает failed. Только true."
+      ],
+      [
+        "sourceVersion",
+        "string",
+        "Да",
+        "Идентификатор финальной фиксации. Длина 1–200 символов."
+      ]
+    ],
+    "PausePayload": [
+      [
+        "reason",
+        "string",
+        "Да",
+        "Причина приостановки. Длина 1–2000 символов."
+      ],
+      [
+        "stateVersion",
+        "integer",
+        "Да",
+        "Целевая версия состояния. От 1 до 2147483647."
+      ]
+    ],
+    "ResumePayload": [
+      [
+        "phaseCode",
+        "string",
+        "Да",
+        "Возобновляемая фаза. Значения: initialization, initial_sales, planning, purchasing, production, sales, analysis."
+      ],
+      [
+        "previousPhaseToken",
+        "string",
+        "Да",
+        "Токен приостановленной фазы. Формат uuid."
+      ],
+      [
+        "stateVersion",
+        "integer",
+        "Да",
+        "Новая целевая версия. От 1 до 2147483647."
+      ],
+      [
+        "documentDate",
+        "string",
+        "Да",
+        "Игровая дата. Формат date."
+      ],
+      [
+        "deadline",
+        "string",
+        "Да",
+        "Новый реальный срок. Формат date-time."
+      ],
+      [
+        "settingsHash",
+        "Hash",
+        "Да",
+        "Неизменный профиль."
+      ]
+    ],
+    "SalesEventRequest": [
+      [
+        "messageId",
+        "string",
+        "Да",
+        "Идентификатор неизменяемого сообщения; совпадает с Idempotency-Key. Формат uuid."
+      ],
+      [
+        "gameId",
+        "string",
+        "Да",
+        "Игра сообщения; должна принадлежать bindingId. Формат uuid."
+      ],
+      [
+        "participantId",
+        "string",
+        "Да",
+        "Команда сообщения; должна принадлежать bindingId. Формат uuid."
+      ],
+      [
+        "phaseToken",
+        "string",
+        "Да",
+        "Токен фазы, к которой относится событие. Формат uuid."
+      ],
+      [
+        "roundNumber",
+        "integer",
+        "Да",
+        "Раунд события. От 0 до 2147483647."
+      ],
+      [
+        "gameMonth",
+        "GameMonth",
+        "Да",
+        "Игровой месяц по календарю раунда."
+      ],
+      [
+        "allocationId",
+        "string",
+        "Да",
+        "Распределение, к которому относится заказ. Формат uuid."
+      ],
+      [
+        "erpOrderId",
+        "string",
+        "Да",
+        "Заказ ERP. Формат uuid."
+      ],
+      [
+        "erpRealizationId",
+        "string",
+        "Да",
+        "Реализация ERP. Формат uuid."
+      ],
+      [
+        "stateVersion",
+        "integer",
+        "Да",
+        "Возрастающая версия состояния данной реализации, включая изменения оплат. От 1 до 2147483647."
+      ],
+      [
+        "capturedAt",
+        "string",
+        "Да",
+        "Реальное время текущего состояния. Формат date-time."
+      ],
+      [
+        "posted",
+        "boolean",
+        "Да",
+        "Проведена ли реализация."
+      ],
+      [
+        "currency",
+        "string",
+        "Да",
+        "Валюта. Только RUB."
+      ],
+      [
+        "lines",
+        "SalesLine[]",
+        "Да",
+        "Полное состояние строк документа, не приращение. 1–4 элементов."
+      ],
+      [
+        "payments",
+        "PaymentFact[]",
+        "Да",
+        "Полное состояние связанных оплат, не приращение. 0–2000 элементов."
+      ]
+    ],
+    "SalesLine": [
+      [
+        "productCode",
+        "string",
+        "Да",
+        "Модель. Значения: CityRide, SportDrive, CargoMax, TourPro."
+      ],
+      [
+        "quantity",
+        "integer",
+        "Да",
+        "Текущее количество по документу; 0 допустим при отмене. От 0 до 2147483647."
+      ],
+      [
+        "unitPrice",
+        "PositiveAmount",
+        "Да",
+        "Цена учёта; согласуется с заказом."
+      ],
+      [
+        "lineAmount",
+        "Amount",
+        "Да",
+        "Сумма строки с НДС, округлённая до копейки; при no_vat обычная сумма."
+      ]
+    ],
+    "PaymentFact": [
+      [
+        "erpPaymentId",
+        "string",
+        "Да",
+        "GUID платёжного документа. Формат uuid."
+      ],
+      [
+        "amount",
+        "Amount",
+        "Да",
+        "Сумма отнесения на эту реализацию, а не сумма всего документа."
+      ],
+      [
+        "status",
+        "string",
+        "Да",
+        "Текущее проведение или отмена. Значения: posted, reversed."
+      ]
+    ],
+    "ExecutionEventRequest": [
+      [
+        "messageId",
+        "string",
+        "Да",
+        "Идентификатор неизменяемого сообщения; совпадает с Idempotency-Key. Формат uuid."
+      ],
+      [
+        "gameId",
+        "string",
+        "Да",
+        "Игра сообщения; должна принадлежать bindingId. Формат uuid."
+      ],
+      [
+        "participantId",
+        "string",
+        "Да",
+        "Команда сообщения; должна принадлежать bindingId. Формат uuid."
+      ],
+      [
+        "phaseToken",
+        "string",
+        "Да",
+        "Токен фазы, к которой относится событие. Формат uuid."
+      ],
+      [
+        "roundNumber",
+        "integer",
+        "Да",
+        "Раунд события. От 0 до 2147483647."
+      ],
+      [
+        "gameMonth",
+        "GameMonth",
+        "Да",
+        "Игровой месяц по календарю раунда."
+      ],
+      [
+        "operationId",
+        "string",
+        "Да",
+        "Единственная локальная цепочка; сохраняется при паузе и повторе. Формат uuid."
+      ],
+      [
+        "executionVersion",
+        "integer",
+        "Да",
+        "Возрастающая версия полного состояния цепочки. От 1 до 2147483647."
+      ],
+      [
+        "executionKind",
+        "string",
+        "Да",
+        "Вид цепочки. Значения: purchasing, production, sales, month_closing."
+      ],
+      [
+        "planId",
+        "string",
+        "Нет*",
+        "Сохраняемый идентификатор утверждённого плана для закупки/производства. Формат uuid."
+      ],
+      [
+        "planVersion",
+        "integer",
+        "Нет*",
+        "Зафиксированная версия плана. От 1 до 2147483647."
+      ],
+      [
+        "erpOrderId",
+        "string",
+        "Нет*",
+        "Заказ рынка для цепочки sales. Формат uuid."
+      ],
+      [
+        "status",
+        "string",
+        "Да",
+        "Состояние цепочки. Значения: queued, running, waiting, paused, completed, failed."
+      ],
+      [
+        "capturedAt",
+        "string",
+        "Да",
+        "Реальное время состояния. Формат date-time."
+      ],
+      [
+        "adjustments",
+        "PlanAdjustment[]",
+        "Да",
+        "Полный перечень исходных и исполняемых строк плана. 0–2000 элементов."
+      ],
+      [
+        "steps",
+        "ExecutionStep[]",
+        "Да",
+        "Полный набор шагов в порядке исполнения. 1–100 элементов."
+      ],
+      [
+        "errorCode",
+        "Code",
+        "Нет*",
+        "Обязательно при failed."
+      ],
+      [
+        "errorMessage",
+        "string",
+        "Нет*",
+        "Причина failed. Длина 1–2000 символов."
+      ]
+    ],
+    "ExecutionStep": [
+      [
+        "stepCode",
+        "string",
+        "Да",
+        "Операция цепочки. Значения: create_supplier_order, receive_components, pay_supplier, create_production_order, issue_materials, produce_goods, move_goods, ship_goods, create_realization, await_customer_payment, close_month."
+      ],
+      [
+        "businessOperationId",
+        "string",
+        "Да",
+        "Сохраняемый хозяйственный ключ шага. Формат uuid."
+      ],
+      [
+        "status",
+        "string",
+        "Да",
+        "Состояние шага. Значения: pending, running, completed, failed, skipped."
+      ],
+      [
+        "erpDocumentIds",
+        "string[]",
+        "Да",
+        "Ссылки документов шага. 0–2000 элементов. Без повторов."
+      ],
+      [
+        "errorCode",
+        "Code",
+        "Нет*",
+        "Обязательно при failed."
+      ],
+      [
+        "errorMessage",
+        "string",
+        "Нет*",
+        "Причина failed. Длина 1–2000 символов."
+      ]
+    ],
+    "PlanAdjustment": [
+      [
+        "itemCode",
+        "Code",
+        "Да",
+        "Комплектующая закупки или модель выпуска."
+      ],
+      [
+        "unitCode",
+        "string",
+        "Да",
+        "Единица. Значения: pcs, set."
+      ],
+      [
+        "originalQuantity",
+        "Quantity",
+        "Да",
+        "Количество до проверки ресурсов."
+      ],
+      [
+        "effectiveQuantity",
+        "Quantity",
+        "Да",
+        "Фактически принятое к исполнению количество."
+      ],
+      [
+        "reasonCode",
+        "string",
+        "Да",
+        "Причина сокращения. Значения: unchanged, insufficient_cash, insufficient_materials."
+      ]
+    ]
+  },
+  "examples": {
+    "Ответ на GET context": {
+      "contractVersion": "1.0",
+      "bindingId": "00000000-0000-4000-8000-000000000004",
+      "gameId": "00000000-0000-4000-8000-000000000001",
+      "participantId": "00000000-0000-4000-8000-000000000002",
+      "roundNumber": 1,
+      "phaseCode": "sales",
+      "phaseToken": "00000000-0000-4000-8000-000000000003",
+      "stateVersion": 7,
+      "gameState": "running",
+      "gameMonth": "2027-02",
+      "documentDate": "2027-02-15",
+      "deadline": "2026-10-07T12:10:00+03:00",
+      "serverTime": "2026-10-07T12:00:00+03:00",
+      "settingsHash": "4b11678ae268d7cb4a021b9a3ac6025ce4f9b261762f9f2632a5b4e4dcca9014",
+      "settings": {
+        "profileId": "BICYCLE_SIMPLE",
+        "profileVersion": "1.0",
+        "executionMode": "automatic",
+        "priceFixation": "before_sales",
+        "currency": "RUB",
+        "taxMode": "no_vat",
+        "roundCount": 2,
+        "calendar": [
+          {
+            "roundNumber": 0,
+            "gameMonth": "2027-01",
+            "documentDate": "2027-01-15"
+          },
+          {
+            "roundNumber": 1,
+            "gameMonth": "2027-02",
+            "documentDate": "2027-02-15"
+          },
+          {
+            "roundNumber": 2,
+            "gameMonth": "2027-03",
+            "documentDate": "2027-03-15"
+          }
+        ],
+        "products": [
+          {
+            "productCode": "CityRide",
+            "minPrice": "35000.00",
+            "maxPrice": "75000.00",
+            "vatRate": "0.00"
+          },
+          {
+            "productCode": "SportDrive",
+            "minPrice": "60000.00",
+            "maxPrice": "120000.00",
+            "vatRate": "0.00"
+          },
+          {
+            "productCode": "CargoMax",
+            "minPrice": "65000.00",
+            "maxPrice": "130000.00",
+            "vatRate": "0.00"
+          },
+          {
+            "productCode": "TourPro",
+            "minPrice": "65000.00",
+            "maxPrice": "125000.00",
+            "vatRate": "0.00"
+          }
+        ],
+        "procurementReduction": "cheapest_item_first_v1",
+        "productionReduction": "product_code_first_v1",
+        "allowSupplierDebt": false,
+        "allowCustomerDebt": false,
+        "pollIntervalSeconds": 5,
+        "requestTimeoutSeconds": 15,
+        "connectionLostSeconds": 60,
+        "maxClockSkewSeconds": 5
+      },
+      "capabilities": [
+        "consistentSnapshot",
+        "phaseGuard",
+        "idempotentCommands",
+        "salesFacts",
+        "finalFinancials",
+        "automaticExecution",
+        "executionReports"
+      ]
+    },
+    "Ответ на GET commands": {
+      "contractVersion": "1.0",
+      "gameId": "00000000-0000-4000-8000-000000000001",
+      "commands": [
+        {
+          "commandId": "00000000-0000-4000-8000-000000000012",
+          "gameId": "00000000-0000-4000-8000-000000000001",
+          "participantId": "00000000-0000-4000-8000-000000000002",
+          "sequence": 12,
+          "phaseToken": "00000000-0000-4000-8000-000000000003",
+          "roundNumber": 1,
+          "gameMonth": "2027-02",
+          "issuedAt": "2026-10-07T12:00:00+03:00",
+          "kind": "create_customer_order",
+          "payload": {
+            "allocationId": "00000000-0000-4000-8000-000000000030",
+            "externalOrderId": "00000000-0000-4000-8000-000000000031",
+            "currency": "RUB",
+            "documentDate": "2027-02-15",
+            "lines": [
+              {
+                "productCode": "CityRide",
+                "quantity": 10,
+                "unitPrice": "50000.00"
+              }
+            ]
+          }
+        }
+      ],
+      "acknowledgedThroughSequence": 11,
+      "hasMore": false
+    },
+    "Окончательный снимок предложения": {
+      "messageId": "00000000-0000-4000-8000-000000000100",
+      "gameId": "00000000-0000-4000-8000-000000000001",
+      "participantId": "00000000-0000-4000-8000-000000000002",
+      "phaseToken": "00000000-0000-4000-8000-000000000003",
+      "roundNumber": 1,
+      "gameMonth": "2027-02",
+      "sourceVersion": "round-1-sales-freeze-1",
+      "capturedAt": "2026-10-07T12:00:00+03:00",
+      "kind": "frozen",
+      "currency": "RUB",
+      "freezeCommandId": "00000000-0000-4000-8000-000000000010",
+      "offers": [
+        {
+          "productCode": "CityRide",
+          "price": "50000.00",
+          "availableQuantity": 10
+        },
+        {
+          "productCode": "SportDrive",
+          "price": "82000.00",
+          "availableQuantity": 0
+        },
+        {
+          "productCode": "CargoMax",
+          "price": "90000.00",
+          "availableQuantity": 0
+        },
+        {
+          "productCode": "TourPro",
+          "price": "88000.00",
+          "availableQuantity": 0
+        }
+      ],
+      "balances": [
+        {
+          "itemCode": "CityRide",
+          "quantity": "10",
+          "unitCode": "pcs",
+          "warehouseId": "finished_goods"
+        },
+        {
+          "itemCode": "SportDrive",
+          "quantity": "0",
+          "unitCode": "pcs",
+          "warehouseId": "finished_goods"
+        },
+        {
+          "itemCode": "CargoMax",
+          "quantity": "0",
+          "unitCode": "pcs",
+          "warehouseId": "finished_goods"
+        },
+        {
+          "itemCode": "TourPro",
+          "quantity": "0",
+          "unitCode": "pcs",
+          "warehouseId": "finished_goods"
+        },
+        {
+          "itemCode": "FRAME_STD",
+          "quantity": "0",
+          "unitCode": "pcs",
+          "warehouseId": "purchases"
+        },
+        {
+          "itemCode": "FRAME_STD",
+          "quantity": "0",
+          "unitCode": "pcs",
+          "warehouseId": "workshop"
+        },
+        {
+          "itemCode": "FRAME_CARGO",
+          "quantity": "0",
+          "unitCode": "pcs",
+          "warehouseId": "purchases"
+        },
+        {
+          "itemCode": "FRAME_CARGO",
+          "quantity": "0",
+          "unitCode": "pcs",
+          "warehouseId": "workshop"
+        },
+        {
+          "itemCode": "POWER_350",
+          "quantity": "0",
+          "unitCode": "set",
+          "warehouseId": "purchases",
+          "characteristicId": "00000000-0000-4000-8000-000000000082"
+        },
+        {
+          "itemCode": "POWER_350",
+          "quantity": "0",
+          "unitCode": "set",
+          "warehouseId": "workshop",
+          "characteristicId": "00000000-0000-4000-8000-000000000082"
+        },
+        {
+          "itemCode": "POWER_500",
+          "quantity": "0",
+          "unitCode": "set",
+          "warehouseId": "purchases",
+          "characteristicId": "00000000-0000-4000-8000-000000000083"
+        },
+        {
+          "itemCode": "POWER_500",
+          "quantity": "0",
+          "unitCode": "set",
+          "warehouseId": "workshop",
+          "characteristicId": "00000000-0000-4000-8000-000000000083"
+        },
+        {
+          "itemCode": "BAT_300",
+          "quantity": "0",
+          "unitCode": "pcs",
+          "warehouseId": "purchases",
+          "characteristicId": "00000000-0000-4000-8000-000000000084"
+        },
+        {
+          "itemCode": "BAT_300",
+          "quantity": "0",
+          "unitCode": "pcs",
+          "warehouseId": "workshop",
+          "characteristicId": "00000000-0000-4000-8000-000000000084"
+        },
+        {
+          "itemCode": "BAT_500",
+          "quantity": "0",
+          "unitCode": "pcs",
+          "warehouseId": "purchases",
+          "characteristicId": "00000000-0000-4000-8000-000000000085"
+        },
+        {
+          "itemCode": "BAT_500",
+          "quantity": "0",
+          "unitCode": "pcs",
+          "warehouseId": "workshop",
+          "characteristicId": "00000000-0000-4000-8000-000000000085"
+        },
+        {
+          "itemCode": "BAT_800",
+          "quantity": "0",
+          "unitCode": "pcs",
+          "warehouseId": "purchases",
+          "characteristicId": "00000000-0000-4000-8000-000000000086"
+        },
+        {
+          "itemCode": "BAT_800",
+          "quantity": "0",
+          "unitCode": "pcs",
+          "warehouseId": "workshop",
+          "characteristicId": "00000000-0000-4000-8000-000000000086"
+        },
+        {
+          "itemCode": "WHEELS_STD",
+          "quantity": "0",
+          "unitCode": "set",
+          "warehouseId": "purchases"
+        },
+        {
+          "itemCode": "WHEELS_STD",
+          "quantity": "0",
+          "unitCode": "set",
+          "warehouseId": "workshop"
+        },
+        {
+          "itemCode": "WHEELS_HEAVY",
+          "quantity": "0",
+          "unitCode": "set",
+          "warehouseId": "purchases"
+        },
+        {
+          "itemCode": "WHEELS_HEAVY",
+          "quantity": "0",
+          "unitCode": "set",
+          "warehouseId": "workshop"
+        },
+        {
+          "itemCode": "EQUIP_BASE",
+          "quantity": "0",
+          "unitCode": "set",
+          "warehouseId": "purchases"
+        },
+        {
+          "itemCode": "EQUIP_BASE",
+          "quantity": "0",
+          "unitCode": "set",
+          "warehouseId": "workshop"
+        },
+        {
+          "itemCode": "EQUIP_PLUS",
+          "quantity": "0",
+          "unitCode": "set",
+          "warehouseId": "purchases"
+        },
+        {
+          "itemCode": "EQUIP_PLUS",
+          "quantity": "0",
+          "unitCode": "set",
+          "warehouseId": "workshop"
+        }
+      ]
+    },
+    "Финальный снимок месяца": {
+      "messageId": "00000000-0000-4000-8000-000000000101",
+      "gameId": "00000000-0000-4000-8000-000000000001",
+      "participantId": "00000000-0000-4000-8000-000000000002",
+      "phaseToken": "00000000-0000-4000-8000-000000000005",
+      "roundNumber": 1,
+      "gameMonth": "2027-02",
+      "sourceVersion": "round-1-final-1",
+      "capturedAt": "2026-10-07T12:00:00+03:00",
+      "kind": "final",
+      "currency": "RUB",
+      "freezeCommandId": "00000000-0000-4000-8000-000000000011",
+      "offers": [
+        {
+          "productCode": "CityRide",
+          "price": "50000.00",
+          "availableQuantity": 4
+        },
+        {
+          "productCode": "SportDrive",
+          "price": "82000.00",
+          "availableQuantity": 0
+        },
+        {
+          "productCode": "CargoMax",
+          "price": "90000.00",
+          "availableQuantity": 0
+        },
+        {
+          "productCode": "TourPro",
+          "price": "88000.00",
+          "availableQuantity": 0
+        }
+      ],
+      "balances": [
+        {
+          "itemCode": "CityRide",
+          "quantity": "4",
+          "unitCode": "pcs",
+          "warehouseId": "finished_goods"
+        },
+        {
+          "itemCode": "SportDrive",
+          "quantity": "0",
+          "unitCode": "pcs",
+          "warehouseId": "finished_goods"
+        },
+        {
+          "itemCode": "CargoMax",
+          "quantity": "0",
+          "unitCode": "pcs",
+          "warehouseId": "finished_goods"
+        },
+        {
+          "itemCode": "TourPro",
+          "quantity": "0",
+          "unitCode": "pcs",
+          "warehouseId": "finished_goods"
+        },
+        {
+          "itemCode": "FRAME_STD",
+          "quantity": "0",
+          "unitCode": "pcs",
+          "warehouseId": "purchases"
+        },
+        {
+          "itemCode": "FRAME_STD",
+          "quantity": "0",
+          "unitCode": "pcs",
+          "warehouseId": "workshop"
+        },
+        {
+          "itemCode": "FRAME_CARGO",
+          "quantity": "0",
+          "unitCode": "pcs",
+          "warehouseId": "purchases"
+        },
+        {
+          "itemCode": "FRAME_CARGO",
+          "quantity": "0",
+          "unitCode": "pcs",
+          "warehouseId": "workshop"
+        },
+        {
+          "itemCode": "POWER_350",
+          "quantity": "0",
+          "unitCode": "set",
+          "warehouseId": "purchases",
+          "characteristicId": "00000000-0000-4000-8000-000000000082"
+        },
+        {
+          "itemCode": "POWER_350",
+          "quantity": "0",
+          "unitCode": "set",
+          "warehouseId": "workshop",
+          "characteristicId": "00000000-0000-4000-8000-000000000082"
+        },
+        {
+          "itemCode": "POWER_500",
+          "quantity": "0",
+          "unitCode": "set",
+          "warehouseId": "purchases",
+          "characteristicId": "00000000-0000-4000-8000-000000000083"
+        },
+        {
+          "itemCode": "POWER_500",
+          "quantity": "0",
+          "unitCode": "set",
+          "warehouseId": "workshop",
+          "characteristicId": "00000000-0000-4000-8000-000000000083"
+        },
+        {
+          "itemCode": "BAT_300",
+          "quantity": "0",
+          "unitCode": "pcs",
+          "warehouseId": "purchases",
+          "characteristicId": "00000000-0000-4000-8000-000000000084"
+        },
+        {
+          "itemCode": "BAT_300",
+          "quantity": "0",
+          "unitCode": "pcs",
+          "warehouseId": "workshop",
+          "characteristicId": "00000000-0000-4000-8000-000000000084"
+        },
+        {
+          "itemCode": "BAT_500",
+          "quantity": "0",
+          "unitCode": "pcs",
+          "warehouseId": "purchases",
+          "characteristicId": "00000000-0000-4000-8000-000000000085"
+        },
+        {
+          "itemCode": "BAT_500",
+          "quantity": "0",
+          "unitCode": "pcs",
+          "warehouseId": "workshop",
+          "characteristicId": "00000000-0000-4000-8000-000000000085"
+        },
+        {
+          "itemCode": "BAT_800",
+          "quantity": "0",
+          "unitCode": "pcs",
+          "warehouseId": "purchases",
+          "characteristicId": "00000000-0000-4000-8000-000000000086"
+        },
+        {
+          "itemCode": "BAT_800",
+          "quantity": "0",
+          "unitCode": "pcs",
+          "warehouseId": "workshop",
+          "characteristicId": "00000000-0000-4000-8000-000000000086"
+        },
+        {
+          "itemCode": "WHEELS_STD",
+          "quantity": "0",
+          "unitCode": "set",
+          "warehouseId": "purchases"
+        },
+        {
+          "itemCode": "WHEELS_STD",
+          "quantity": "0",
+          "unitCode": "set",
+          "warehouseId": "workshop"
+        },
+        {
+          "itemCode": "WHEELS_HEAVY",
+          "quantity": "0",
+          "unitCode": "set",
+          "warehouseId": "purchases"
+        },
+        {
+          "itemCode": "WHEELS_HEAVY",
+          "quantity": "0",
+          "unitCode": "set",
+          "warehouseId": "workshop"
+        },
+        {
+          "itemCode": "EQUIP_BASE",
+          "quantity": "0",
+          "unitCode": "set",
+          "warehouseId": "purchases"
+        },
+        {
+          "itemCode": "EQUIP_BASE",
+          "quantity": "0",
+          "unitCode": "set",
+          "warehouseId": "workshop"
+        },
+        {
+          "itemCode": "EQUIP_PLUS",
+          "quantity": "0",
+          "unitCode": "set",
+          "warehouseId": "purchases"
+        },
+        {
+          "itemCode": "EQUIP_PLUS",
+          "quantity": "0",
+          "unitCode": "set",
+          "warehouseId": "workshop"
+        }
+      ],
+      "financials": {
+        "cash": "300000.00",
+        "profit": "97200.00",
+        "customerDebt": "0.00",
+        "supplierDebt": "0.00",
+        "monthClosed": true
+      }
+    },
+    "Готовность": {
+      "messageId": "00000000-0000-4000-8000-000000000102",
+      "gameId": "00000000-0000-4000-8000-000000000001",
+      "participantId": "00000000-0000-4000-8000-000000000002",
+      "phaseToken": "00000000-0000-4000-8000-000000000003",
+      "roundNumber": 1,
+      "gameMonth": "2027-02",
+      "snapshotId": "00000000-0000-4000-8000-000000000020",
+      "ready": true
+    },
+    "Успешное подтверждение заказа": {
+      "messageId": "00000000-0000-4000-8000-000000000103",
+      "gameId": "00000000-0000-4000-8000-000000000001",
+      "participantId": "00000000-0000-4000-8000-000000000002",
+      "phaseToken": "00000000-0000-4000-8000-000000000003",
+      "roundNumber": 1,
+      "gameMonth": "2027-02",
+      "status": "completed",
+      "erpDocumentIds": [
+        "00000000-0000-4000-8000-000000000040"
+      ]
+    },
+    "Подтверждение ошибки ERP": {
+      "messageId": "00000000-0000-4000-8000-000000000104",
+      "gameId": "00000000-0000-4000-8000-000000000001",
+      "participantId": "00000000-0000-4000-8000-000000000002",
+      "phaseToken": "00000000-0000-4000-8000-000000000003",
+      "roundNumber": 1,
+      "gameMonth": "2027-02",
+      "status": "failed",
+      "erpDocumentIds": [],
+      "errorCode": "ERP_POSTING_FAILED",
+      "errorMessage": "Не заполнено соглашение покупателя"
+    },
+    "Частичная реализация без оплаты": {
+      "messageId": "00000000-0000-4000-8000-000000000105",
+      "gameId": "00000000-0000-4000-8000-000000000001",
+      "participantId": "00000000-0000-4000-8000-000000000002",
+      "phaseToken": "00000000-0000-4000-8000-000000000003",
+      "roundNumber": 1,
+      "gameMonth": "2027-02",
+      "allocationId": "00000000-0000-4000-8000-000000000030",
+      "erpOrderId": "00000000-0000-4000-8000-000000000040",
+      "erpRealizationId": "00000000-0000-4000-8000-000000000041",
+      "stateVersion": 1,
+      "capturedAt": "2026-10-07T12:00:00+03:00",
+      "posted": true,
+      "currency": "RUB",
+      "lines": [
+        {
+          "productCode": "CityRide",
+          "quantity": 6,
+          "unitPrice": "50000.00",
+          "lineAmount": "300000.00"
+        }
+      ],
+      "payments": []
+    },
+    "Та же реализация после двух оплат": {
+      "messageId": "00000000-0000-4000-8000-000000000106",
+      "gameId": "00000000-0000-4000-8000-000000000001",
+      "participantId": "00000000-0000-4000-8000-000000000002",
+      "phaseToken": "00000000-0000-4000-8000-000000000003",
+      "roundNumber": 1,
+      "gameMonth": "2027-02",
+      "allocationId": "00000000-0000-4000-8000-000000000030",
+      "erpOrderId": "00000000-0000-4000-8000-000000000040",
+      "erpRealizationId": "00000000-0000-4000-8000-000000000041",
+      "stateVersion": 2,
+      "capturedAt": "2026-10-07T12:00:00+03:00",
+      "posted": true,
+      "currency": "RUB",
+      "lines": [
+        {
+          "productCode": "CityRide",
+          "quantity": 6,
+          "unitPrice": "50000.00",
+          "lineAmount": "300000.00"
+        }
+      ],
+      "payments": [
+        {
+          "erpPaymentId": "00000000-0000-4000-8000-000000000042",
+          "amount": "100000.00",
+          "status": "posted"
+        },
+        {
+          "erpPaymentId": "00000000-0000-4000-8000-000000000043",
+          "amount": "200000.00",
+          "status": "posted"
+        }
+      ]
+    },
+    "Состояние автоматической закупки": {
+      "messageId": "00000000-0000-4000-8000-000000000107",
+      "gameId": "00000000-0000-4000-8000-000000000001",
+      "participantId": "00000000-0000-4000-8000-000000000002",
+      "phaseToken": "00000000-0000-4000-8000-000000000006",
+      "roundNumber": 1,
+      "gameMonth": "2027-02",
+      "operationId": "00000000-0000-4000-8000-000000000050",
+      "executionVersion": 2,
+      "executionKind": "purchasing",
+      "planId": "00000000-0000-4000-8000-000000000051",
+      "planVersion": 1,
+      "status": "running",
+      "capturedAt": "2026-10-07T12:00:00+03:00",
+      "adjustments": [
+        {
+          "itemCode": "FRAME_STD",
+          "unitCode": "pcs",
+          "originalQuantity": "2",
+          "effectiveQuantity": "1",
+          "reasonCode": "insufficient_cash"
+        }
+      ],
+      "steps": [
+        {
+          "stepCode": "create_supplier_order",
+          "businessOperationId": "00000000-0000-4000-8000-000000000052",
+          "status": "completed",
+          "erpDocumentIds": [
+            "00000000-0000-4000-8000-000000000053"
+          ]
+        },
+        {
+          "stepCode": "receive_components",
+          "businessOperationId": "00000000-0000-4000-8000-000000000054",
+          "status": "running",
+          "erpDocumentIds": []
+        },
+        {
+          "stepCode": "pay_supplier",
+          "businessOperationId": "00000000-0000-4000-8000-000000000055",
+          "status": "pending",
+          "erpDocumentIds": []
+        }
+      ]
+    },
+    "Ответ на принятие снимка": {
+      "contractVersion": "1.0",
+      "messageId": "00000000-0000-4000-8000-000000000100",
+      "resourceId": "00000000-0000-4000-8000-000000000020",
+      "replayed": false
+    },
+    "Ошибка проверки поля": {
+      "contractVersion": "1.0",
+      "code": "VALIDATION_ERROR",
+      "message": "Цена должна быть положительной",
+      "correlationId": "00000000-0000-4000-8000-000000000060",
+      "details": [
+        {
+          "field": "offers[0].price",
+          "code": "POSITIVE_AMOUNT_REQUIRED",
+          "message": "Значение 0.00 недопустимо"
+        }
+      ]
+    },
+    "Полезная нагрузка prepare_game": {
+      "settingsHash": "4b11678ae268d7cb4a021b9a3ac6025ce4f9b261762f9f2632a5b4e4dcca9014",
+      "initialCash": "0.00",
+      "currency": "RUB",
+      "balances": [
+        {
+          "itemCode": "CityRide",
+          "quantity": "15",
+          "unitCode": "pcs",
+          "warehouseId": "finished_goods",
+          "unitCost": "33800.00"
+        },
+        {
+          "itemCode": "SportDrive",
+          "quantity": "8",
+          "unitCode": "pcs",
+          "warehouseId": "finished_goods",
+          "unitCost": "40600.00"
+        },
+        {
+          "itemCode": "CargoMax",
+          "quantity": "4",
+          "unitCode": "pcs",
+          "warehouseId": "finished_goods",
+          "unitCost": "50600.00"
+        },
+        {
+          "itemCode": "TourPro",
+          "quantity": "6",
+          "unitCode": "pcs",
+          "warehouseId": "finished_goods",
+          "unitCost": "44600.00"
+        },
+        {
+          "itemCode": "FRAME_STD",
+          "quantity": "0",
+          "unitCode": "pcs",
+          "warehouseId": "purchases",
+          "unitCost": "6800.00"
+        },
+        {
+          "itemCode": "FRAME_STD",
+          "quantity": "0",
+          "unitCode": "pcs",
+          "warehouseId": "workshop",
+          "unitCost": "6800.00"
+        },
+        {
+          "itemCode": "FRAME_CARGO",
+          "quantity": "0",
+          "unitCode": "pcs",
+          "warehouseId": "purchases",
+          "unitCost": "10400.00"
+        },
+        {
+          "itemCode": "FRAME_CARGO",
+          "quantity": "0",
+          "unitCode": "pcs",
+          "warehouseId": "workshop",
+          "unitCost": "10400.00"
+        },
+        {
+          "itemCode": "POWER_350",
+          "quantity": "0",
+          "unitCode": "set",
+          "warehouseId": "purchases",
+          "unitCost": "9800.00"
+        },
+        {
+          "itemCode": "POWER_350",
+          "quantity": "0",
+          "unitCode": "set",
+          "warehouseId": "workshop",
+          "unitCost": "9800.00"
+        },
+        {
+          "itemCode": "POWER_500",
+          "quantity": "0",
+          "unitCode": "set",
+          "warehouseId": "purchases",
+          "unitCost": "12200.00"
+        },
+        {
+          "itemCode": "POWER_500",
+          "quantity": "0",
+          "unitCode": "set",
+          "warehouseId": "workshop",
+          "unitCost": "12200.00"
+        },
+        {
+          "itemCode": "BAT_300",
+          "quantity": "0",
+          "unitCode": "pcs",
+          "warehouseId": "purchases",
+          "unitCost": "6800.00"
+        },
+        {
+          "itemCode": "BAT_300",
+          "quantity": "0",
+          "unitCode": "pcs",
+          "warehouseId": "workshop",
+          "unitCost": "6800.00"
+        },
+        {
+          "itemCode": "BAT_500",
+          "quantity": "0",
+          "unitCode": "pcs",
+          "warehouseId": "purchases",
+          "unitCost": "9200.00"
+        },
+        {
+          "itemCode": "BAT_500",
+          "quantity": "0",
+          "unitCode": "pcs",
+          "warehouseId": "workshop",
+          "unitCost": "9200.00"
+        },
+        {
+          "itemCode": "BAT_800",
+          "quantity": "0",
+          "unitCode": "pcs",
+          "warehouseId": "purchases",
+          "unitCost": "13200.00"
+        },
+        {
+          "itemCode": "BAT_800",
+          "quantity": "0",
+          "unitCode": "pcs",
+          "warehouseId": "workshop",
+          "unitCost": "13200.00"
+        },
+        {
+          "itemCode": "WHEELS_STD",
+          "quantity": "0",
+          "unitCode": "set",
+          "warehouseId": "purchases",
+          "unitCost": "4800.00"
+        },
+        {
+          "itemCode": "WHEELS_STD",
+          "quantity": "0",
+          "unitCode": "set",
+          "warehouseId": "workshop",
+          "unitCost": "4800.00"
+        },
+        {
+          "itemCode": "WHEELS_HEAVY",
+          "quantity": "0",
+          "unitCode": "set",
+          "warehouseId": "purchases",
+          "unitCost": "7200.00"
+        },
+        {
+          "itemCode": "WHEELS_HEAVY",
+          "quantity": "0",
+          "unitCode": "set",
+          "warehouseId": "workshop",
+          "unitCost": "7200.00"
+        },
+        {
+          "itemCode": "EQUIP_BASE",
+          "quantity": "0",
+          "unitCode": "set",
+          "warehouseId": "purchases",
+          "unitCost": "5600.00"
+        },
+        {
+          "itemCode": "EQUIP_BASE",
+          "quantity": "0",
+          "unitCode": "set",
+          "warehouseId": "workshop",
+          "unitCost": "5600.00"
+        },
+        {
+          "itemCode": "EQUIP_PLUS",
+          "quantity": "0",
+          "unitCode": "set",
+          "warehouseId": "purchases",
+          "unitCost": "7600.00"
+        },
+        {
+          "itemCode": "EQUIP_PLUS",
+          "quantity": "0",
+          "unitCode": "set",
+          "warehouseId": "workshop",
+          "unitCost": "7600.00"
+        }
+      ],
+      "initialPrices": [
+        {
+          "productCode": "CityRide",
+          "price": "33800.00"
+        },
+        {
+          "productCode": "SportDrive",
+          "price": "40600.00"
+        },
+        {
+          "productCode": "CargoMax",
+          "price": "50600.00"
+        },
+        {
+          "productCode": "TourPro",
+          "price": "44600.00"
+        }
+      ],
+      "seed": "fixed"
+    },
+    "Полезная нагрузка open_phase": {
+      "phaseCode": "sales",
+      "previousPhaseToken": "00000000-0000-4000-8000-000000000006",
+      "stateVersion": 7,
+      "documentDate": "2027-02-15",
+      "deadline": "2026-10-07T12:10:00+03:00",
+      "settingsHash": "4b11678ae268d7cb4a021b9a3ac6025ce4f9b261762f9f2632a5b4e4dcca9014"
+    },
+    "Полезная нагрузка freeze_phase": {
+      "phaseCode": "sales",
+      "documentDate": "2027-02-15",
+      "deadline": "2026-10-07T12:10:00+03:00",
+      "snapshotKind": "frozen",
+      "sourceVersion": "round-1-sales-freeze-1"
+    },
+    "Полезная нагрузка pay_realization": {
+      "erpRealizationId": "00000000-0000-4000-8000-000000000041",
+      "paymentOperationId": "00000000-0000-4000-8000-000000000070",
+      "amount": "100000.00",
+      "currency": "RUB",
+      "documentDate": "2027-02-15"
+    },
+    "Полезная нагрузка request_final_snapshot": {
+      "requireClosedMonth": true,
+      "sourceVersion": "round-1-final-1"
+    },
+    "Полезная нагрузка pause_game": {
+      "reason": "Перерыв",
+      "stateVersion": 8
+    },
+    "Полезная нагрузка resume_game": {
+      "phaseCode": "sales",
+      "previousPhaseToken": "00000000-0000-4000-8000-000000000003",
+      "stateVersion": 9,
+      "documentDate": "2027-02-15",
+      "deadline": "2026-10-07T12:20:00+03:00",
+      "settingsHash": "4b11678ae268d7cb4a021b9a3ac6025ce4f9b261762f9f2632a5b4e4dcca9014"
+    }
+  }
+}

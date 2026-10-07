@@ -1,0 +1,219 @@
+импорт Данные
+
+@ВПроекте @НаСервере @ДоступноСКлиента
+метод СохранитьПрофиль(Ссылка: Игры.Ссылка, Текст: Строка)
+    ДоступИгры.ПроверитьВедущего(Ссылка)
+    исп КонтекстДоступа.Привилегированный()
+    исп Транзакции.Начать()
+    знч Игра = Ссылка.ЗагрузитьОбъект(Истина)!
+    ПроверкиДанных.Требовать(Игра.Статус == СостоянияИгры.Черновик и не Игра.Демонстрационная,
+        "Профиль ERP задаётся до подготовки обычной игры")
+    знч Профиль = ПротоколERP.Прочитать(Текст)
+    ПротоколERP.Требовать(Профиль.Размер() == 2 и Профиль.СодержитКлюч("settings") и Профиль.СодержитКлюч("prepare"),
+        "VALIDATION_ERROR", "Профиль содержит только settings и prepare")
+    знч Настройки = ПротоколERP.ОбъектJson(Профиль.Получить("settings"))
+    ПроверитьНастройки(Настройки)
+    знч Подготовка = ПротоколERP.ОбъектJson(Профиль.Получить("prepare"))
+    Подготовка.Вставить("settingsHash", ПротоколERP.Хеш(ПротоколERP.КаноническийJson(Настройки)))
+    Профиль.Вставить("prepare", Подготовка)
+    ПротоколERP.ПроверитьСхему(Подготовка, КонтрактERP.Схема("PrepareGamePayload"))
+    ПроверитьБалансы(ПротоколERP.МассивJson(Подготовка.Получить("balances")), Истина)
+    ПротоколERP.УникальныеПоля(ПротоколERP.МассивJson(Подготовка.Получить("initialPrices")), ["productCode"], "initialPrices")
+    знч Эталон = ПротоколERP.ОбъектJson(ПротоколERP.Прочитать(ПримерПрофиля()).Получить("prepare"))
+    ПротоколERP.Требовать(Подготовка.Получить("initialCash") == Эталон.Получить("initialCash") и Подготовка.Получить("seed") == "fixed",
+        "VALIDATION_ERROR", "BICYCLE_SIMPLE 1.0 использует фиксированный начальный пакет", "prepare")
+    для Элемент из ПротоколERP.МассивJson(Подготовка.Получить("balances"))
+        знч Остаток = ПротоколERP.ОбъектJson(Элемент)
+        пер Проверен = Ложь
+        для Строка из ПротоколERP.МассивJson(Эталон.Получить("balances"))
+            знч Начальный = ПротоколERP.ОбъектJson(Строка)
+            если Начальный.Получить("itemCode") == Остаток.Получить("itemCode") и Начальный.Получить("warehouseId") == Остаток.Получить("warehouseId")
+                ПротоколERP.Требовать(Начальный.Получить("quantity") == Остаток.Получить("quantity") и Начальный.Получить("unitCost") == Остаток.Получить("unitCost"),
+                    "VALIDATION_ERROR", "Начальные остатки и стоимость отличаются от профиля 1.0", "prepare.balances")
+                Проверен = Истина
+            ;
+        ;
+        ПротоколERP.Требовать(Проверен, "MAPPING_INCOMPLETE", "Нет остатка в профиле", "prepare.balances")
+        знч Код = ПротоколERP.СтрокаJson(Остаток, "itemCode")
+        знч Есть = Запрос{ВЫБРАТЬ Ссылка ИЗ НоменклатураИгры ГДЕ Код == %Код}.Выполнить().ПервыйИлиНеопределено()
+        если Есть == Неопределено
+            знч Номенклатура = новый НоменклатураИгры.Объект()
+            Номенклатура.Код = Код
+            Номенклатура.Наименование = Код
+            Номенклатура.Единица = Единица(Код) == "pcs" ? "шт" : "комплект"
+            Номенклатура.Вид = ["CityRide", "SportDrive", "CargoMax", "TourPro"].Содержит(Код) ? ВидыНоменклатурыИгры.ГотоваяПродукция : ВидыНоменклатурыИгры.Комплектующее
+            Номенклатура.Записать()
+        ;
+    ;
+    для Элемент из ПротоколERP.МассивJson(Подготовка.Получить("initialPrices"))
+        знч Цена = ПротоколERP.ОбъектJson(Элемент)
+        пер Проверена = Ложь
+        для Строка из ПротоколERP.МассивJson(Эталон.Получить("initialPrices"))
+            знч Начальная = ПротоколERP.ОбъектJson(Строка)
+            если Начальная.Получить("productCode") == Цена.Получить("productCode")
+                ПротоколERP.Требовать(Начальная.Получить("price") == Цена.Получить("price"), "VALIDATION_ERROR", "Начальная цена отличается от профиля", "prepare.initialPrices")
+                Проверена = Истина
+            ;
+        ;
+        ПротоколERP.Требовать(Проверена, "MAPPING_INCOMPLETE", "Неизвестная начальная цена", "prepare.initialPrices")
+    ;
+    знч Документ = новый СообщенияERP.Объект()
+    Документ.Дата = ДатаВремя.Сейчас()
+    Документ.Игра = Ссылка
+    Документ.Вид = "profile"
+    Документ.Ресурс = новый Ууид().ВСтроку()
+    Документ.ВремяПриема = Момент.Сейчас()
+    Документ.ХешДанных = ПротоколERP.СтрокаJson(Подготовка, "settingsHash")
+    СообщенияERP.ЗаполнитьТело(Документ, ПротоколERP.КаноническийJson(Профиль))
+    Документ.Записать()
+    Игра.ПрофильERP = Документ.Ссылка
+    Игра.Записать()
+;
+
+@ВПроекте @НаСервере
+метод Профиль(Игра: Игры.Объект): Соответствие<Строка, Объект?>
+    ПротоколERP.Требовать(Игра.ПрофильERP != Неопределено, "BINDING_NOT_ASSIGNED", "Ведущий ещё не настроил профиль ERP", КодОтвета = 409)
+    возврат ПротоколERP.Прочитать(СообщенияERP.Текст(Игра.ПрофильERP!))
+;
+
+@ВПроекте @НаСервере
+метод Настройки(Игра: Игры.Объект): Соответствие<Строка, Объект?>
+    возврат ПротоколERP.ОбъектJson(Профиль(Игра).Получить("settings"))
+;
+
+@ВПроекте @НаСервере
+метод Подготовка(Игра: Игры.Объект): Соответствие<Строка, Объект?>
+    возврат ПротоколERP.ОбъектJson(Профиль(Игра).Получить("prepare"))
+;
+
+@ВПроекте @НаСервере
+метод КалендарьРаунда(Игра: Игры.Объект, Номер: Число): Соответствие<Строка, Объект?>
+    для Элемент из ПротоколERP.МассивJson(Настройки(Игра).Получить("calendar"))
+        знч Календарь = ПротоколERP.ОбъектJson(Элемент)
+        если ПротоколERP.ЧислоJson(Календарь, "roundNumber") == Номер
+            возврат Календарь
+        ;
+    ;
+    выбросить новый ПротоколERP.Ошибка("Раунд отсутствует в календаре", 409, "PHASE_CONFLICT")
+;
+
+@ВПроекте @НаСервере
+метод ПроверитьНастройки(Настройки: Соответствие<Строка, Объект?>)
+    ПротоколERP.ПроверитьСхему(Настройки, КонтрактERP.Схема("GameSettings"))
+    ПротоколERP.Требовать(ПротоколERP.СтрокаJson(Настройки, "profileId") == "BICYCLE_SIMPLE"
+        и ПротоколERP.СтрокаJson(Настройки, "profileVersion") == "1.0", "VALIDATION_ERROR", "Поддерживается профиль BICYCLE_SIMPLE 1.0", "profileId")
+    знч Календарь = ПротоколERP.МассивJson(Настройки.Получить("calendar"))
+    ПротоколERP.Требовать(Календарь.Размер() == ПротоколERP.ЧислоJson(Настройки, "roundCount") + 1, "VALIDATION_ERROR", "Неполный календарь", "calendar")
+    пер Номер = 0
+    пер ПредыдущийМесяц = ""
+    пер ПредыдущийНомерМесяца = -1
+    для Элемент из Календарь
+        знч Раунд = ПротоколERP.ОбъектJson(Элемент)
+        знч Месяц = ПротоколERP.СтрокаJson(Раунд, "gameMonth")
+        знч НомерМесяца = новый Число(Месяц.ПодстрокаСНачала(4)) * 12 + новый Число(Месяц.Подстрока(5))
+        ПротоколERP.Требовать((ПредыдущийНомерМесяца == -1 или НомерМесяца == ПредыдущийНомерМесяца + 1) и ПротоколERP.СтрокаJson(Раунд, "documentDate") == Месяц + "-15",
+            "VALIDATION_ERROR", "Календарь содержит последовательные месяцы и дату 15-го числа", "calendar")
+        ПредыдущийНомерМесяца = НомерМесяца
+        ПротоколERP.Требовать(ПротоколERP.ЧислоJson(Раунд, "roundNumber") == Номер и Месяц.Сравнить(ПредыдущийМесяц) > 0
+            и ПротоколERP.СтрокаJson(Раунд, "documentDate").ПодстрокаСНачала(7) == Месяц,
+            "VALIDATION_ERROR", "Номера календаря идут от нуля, месяцы возрастают, дата принадлежит месяцу", "calendar")
+        Номер = Номер + 1
+        ПредыдущийМесяц = Месяц
+    ;
+    знч Продукты = ПротоколERP.МассивJson(Настройки.Получить("products"))
+    ПротоколERP.УникальныеПоля(Продукты, ["productCode"], "products")
+    для Элемент из Продукты
+        знч Продукт = ПротоколERP.ОбъектJson(Элемент)
+        ПротоколERP.Требовать(новый Число(ПротоколERP.СтрокаJson(Продукт, "minPrice")) <= новый Число(ПротоколERP.СтрокаJson(Продукт, "maxPrice")),
+            "VALIDATION_ERROR", "Минимум цены превышает максимум", "products")
+        знч Ставка = новый Число(ПротоколERP.СтрокаJson(Продукт, "vatRate"))
+        ПротоколERP.Требовать(Ставка <= 100 и (ПротоколERP.СтрокаJson(Настройки, "taxMode") != "no_vat" или Ставка == 0),
+            "VALIDATION_ERROR", "Недопустимая ставка НДС", "products.vatRate")
+    ;
+    ПротоколERP.Требовать(ПротоколERP.ЧислоJson(Настройки, "connectionLostSeconds") > ПротоколERP.ЧислоJson(Настройки, "requestTimeoutSeconds")
+        + ПротоколERP.ЧислоJson(Настройки, "pollIntervalSeconds"), "VALIDATION_ERROR", "Порог потери связи слишком мал", "connectionLostSeconds")
+;
+
+@ВПроекте @НаСервере
+метод ПравилоПродукта(Игра: Игры.Объект, Код: Строка): Соответствие<Строка, Объект?>
+    для Элемент из ПротоколERP.МассивJson(Настройки(Игра).Получить("products"))
+        знч Правило = ПротоколERP.ОбъектJson(Элемент)
+        если ПротоколERP.СтрокаJson(Правило, "productCode") == Код
+            возврат Правило
+        ;
+    ;
+    выбросить новый ПротоколERP.Ошибка("Продукт отсутствует в профиле", 422, "MAPPING_INCOMPLETE")
+;
+
+@ВПроекте @НаСервере
+метод Единица(Код: Строка): Строка
+    возврат ["POWER_350", "POWER_500", "WHEELS_STD", "WHEELS_HEAVY", "EQUIP_BASE", "EQUIP_PLUS"].Содержит(Код) ? "set" : "pcs"
+;
+
+@ВПроекте @НаСервере
+метод ПроверитьБалансы(Строки: Массив<Объект?>, Начальные: Булево)
+    ПротоколERP.Требовать(Строки.Размер() == 26, "MAPPING_INCOMPLETE", "Требуются все 26 остатков, включая нули", "balances")
+    ПротоколERP.УникальныеПоля(Строки, ["itemCode", "warehouseId"], "balances")
+    для Элемент из Строки
+        знч Остаток = ПротоколERP.ОбъектJson(Элемент)
+        знч Код = ПротоколERP.СтрокаJson(Остаток, "itemCode")
+        знч Склад = ПротоколERP.СтрокаJson(Остаток, "warehouseId")
+        знч ЭтоПродукт = ["CityRide", "SportDrive", "CargoMax", "TourPro"].Содержит(Код)
+        знч ЭтоКомпонент = ["FRAME_STD", "FRAME_CARGO", "POWER_350", "POWER_500", "BAT_300", "BAT_500", "BAT_800",
+            "WHEELS_STD", "WHEELS_HEAVY", "EQUIP_BASE", "EQUIP_PLUS"].Содержит(Код)
+        ПротоколERP.Требовать((ЭтоПродукт и Склад == "finished_goods") или (ЭтоКомпонент и ["purchases", "workshop"].Содержит(Склад)),
+            "MAPPING_INCOMPLETE", "Код или склад отсутствует в профиле", "balances")
+        ПротоколERP.Требовать(ПротоколERP.СтрокаJson(Остаток, "unitCode") == Единица(Код), "MAPPING_INCOMPLETE", "Неверная игровая единица", "balances.unitCode")
+        знч Количество = новый Число(ПротоколERP.СтрокаJson(Остаток, "quantity"))
+        ПротоколERP.Требовать(не ЭтоПродукт или Количество == Количество.Округлить(0), "VALIDATION_ERROR", "Число велосипедов должно быть целым", "balances.quantity")
+    ;
+;
+
+@ВПроекте @НаСервере
+метод Деньги(Сумма: Число): Строка
+    возврат ПротоколERP.Деньги(Сумма)
+;
+
+@ВПроекте @НаСервере
+метод КодФазы(Фаза: ФазыИгры): Строка
+    если Фаза == ФазыИгры.Подготовка
+        возврат "initialization"
+    иначе если Фаза == ФазыИгры.СтартоваяПродажа
+        возврат "initial_sales"
+    иначе если Фаза == ФазыИгры.Планирование
+        возврат "planning"
+    иначе если Фаза == ФазыИгры.Закупки
+        возврат "purchasing"
+    иначе если Фаза == ФазыИгры.Производство
+        возврат "production"
+    иначе если Фаза == ФазыИгры.Продажи
+        возврат "sales"
+    ;
+    возврат "analysis"
+;
+
+@ВПроекте @НаСервере
+метод КодСостояния(Статус: СостоянияИгры): Строка
+    если Статус == СостоянияИгры.Черновик
+        возврат "draft"
+    иначе если Статус == СостоянияИгры.Подготовка
+        возврат "preparing"
+    иначе если Статус == СостоянияИгры.Идет
+        возврат "running"
+    иначе если Статус == СостоянияИгры.Пауза
+        возврат "paused"
+    иначе если Статус == СостоянияИгры.Завершена
+        возврат "completed"
+    ;
+    возврат "cancelled"
+;
+
+@ВПроекте @НаСервере @ДоступноСКлиента
+метод ПримерПрофиля(): Строка
+    возврат "{\"settings\":{\"profileId\":\"BICYCLE_SIMPLE\",\"profileVersion\":\"1.0\",\"executionMode\":\"basic\",\"priceFixation\":\"before_sales\",\"currency\":\"RUB\",\"taxMode\":\"no_vat\",\"roundCount\":4,\"calendar\":[{\"roundNumber\":0,\"gameMonth\":\"2027-01\",\"documentDate\":\"2027-01-15\"},{\"roundNumber\":1,\"gameMonth\":\"2027-02\",\"documentDate\":\"2027-02-15\"},{\"roundNumber\":2,\"gameMonth\":\"2027-03\",\"documentDate\":\"2027-03-15\"},{\"roundNumber\":3,\"gameMonth\":\"2027-04\",\"documentDate\":\"2027-04-15\"},{\"roundNumber\":4,\"gameMonth\":\"2027-05\",\"documentDate\":\"2027-05-15\"}],\"products\":[{\"productCode\":\"CityRide\",\"minPrice\":\"35000.00\",\"maxPrice\":\"75000.00\",\"vatRate\":\"0.00\"},{\"productCode\":\"SportDrive\",\"minPrice\":\"60000.00\",\"maxPrice\":\"120000.00\",\"vatRate\":\"0.00\"},{\"productCode\":\"CargoMax\",\"minPrice\":\"65000.00\",\"maxPrice\":\"130000.00\",\"vatRate\":\"0.00\"},{\"productCode\":\"TourPro\",\"minPrice\":\"65000.00\",\"maxPrice\":\"125000.00\",\"vatRate\":\"0.00\"}],\"procurementReduction\":\"cheapest_item_first_v1\",\"productionReduction\":\"product_code_first_v1\",\"allowSupplierDebt\":false,\"allowCustomerDebt\":false,\"pollIntervalSeconds\":5,\"requestTimeoutSeconds\":15,\"connectionLostSeconds\":60,\"maxClockSkewSeconds\":5},\"prepare\":{\"settingsHash\":\"0d487ca47b042e328a465397ee8268b7690633accac2d5301aeb30521f70bf65\",\"initialCash\":\"0.00\",\"currency\":\"RUB\",\"balances\":[{\"itemCode\":\"CityRide\",\"quantity\":\"15\",\"unitCode\":\"pcs\",\"warehouseId\":\"finished_goods\",\"unitCost\":\"33800.00\"},{\"itemCode\":\"SportDrive\",\"quantity\":\"8\",\"unitCode\":\"pcs\",\"warehouseId\":\"finished_goods\",\"unitCost\":\"40600.00\"},{\"itemCode\":\"CargoMax\",\"quantity\":\"4\",\"unitCode\":\"pcs\",\"warehouseId\":\"finished_goods\",\"unitCost\":\"50600.00\"},{\"itemCode\":\"TourPro\",\"quantity\":\"6\",\"unitCode\":\"pcs\",\"warehouseId\":\"finished_goods\",\"unitCost\":\"44600.00\"},{\"itemCode\":\"FRAME_STD\",\"quantity\":\"0\",\"unitCode\":\"pcs\",\"warehouseId\":\"purchases\",\"unitCost\":\"6800.00\"},{\"itemCode\":\"FRAME_STD\",\"quantity\":\"0\",\"unitCode\":\"pcs\",\"warehouseId\":\"workshop\",\"unitCost\":\"6800.00\"},{\"itemCode\":\"FRAME_CARGO\",\"quantity\":\"0\",\"unitCode\":\"pcs\",\"warehouseId\":\"purchases\",\"unitCost\":\"10400.00\"},{\"itemCode\":\"FRAME_CARGO\",\"quantity\":\"0\",\"unitCode\":\"pcs\",\"warehouseId\":\"workshop\",\"unitCost\":\"10400.00\"},{\"itemCode\":\"POWER_350\",\"quantity\":\"0\",\"unitCode\":\"set\",\"warehouseId\":\"purchases\",\"unitCost\":\"9800.00\"},{\"itemCode\":\"POWER_350\",\"quantity\":\"0\",\"unitCode\":\"set\",\"warehouseId\":\"workshop\",\"unitCost\":\"9800.00\"},{\"itemCode\":\"POWER_500\",\"quantity\":\"0\",\"unitCode\":\"set\",\"warehouseId\":\"purchases\",\"unitCost\":\"12200.00\"},{\"itemCode\":\"POWER_500\",\"quantity\":\"0\",\"unitCode\":\"set\",\"warehouseId\":\"workshop\",\"unitCost\":\"12200.00\"},{\"itemCode\":\"BAT_300\",\"quantity\":\"0\",\"unitCode\":\"pcs\",\"warehouseId\":\"purchases\",\"unitCost\":\"6800.00\"},{\"itemCode\":\"BAT_300\",\"quantity\":\"0\",\"unitCode\":\"pcs\",\"warehouseId\":\"workshop\",\"unitCost\":\"6800.00\"},{\"itemCode\":\"BAT_500\",\"quantity\":\"0\",\"unitCode\":\"pcs\",\"warehouseId\":\"purchases\",\"unitCost\":\"9200.00\"},{\"itemCode\":\"BAT_500\",\"quantity\":\"0\",\"unitCode\":\"pcs\",\"warehouseId\":\"workshop\",\"unitCost\":\"9200.00\"},{\"itemCode\":\"BAT_800\",\"quantity\":\"0\",\"unitCode\":\"pcs\",\"warehouseId\":\"purchases\",\"unitCost\":\"13200.00\"},{\"itemCode\":\"BAT_800\",\"quantity\":\"0\",\"unitCode\":\"pcs\",\"warehouseId\":\"workshop\",\"unitCost\":\"13200.00\"},{\"itemCode\":\"WHEELS_STD\",\"quantity\":\"0\",\"unitCode\":\"set\",\"warehouseId\":\"purchases\",\"unitCost\":\"4800.00\"},{\"itemCode\":\"WHEELS_STD\",\"quantity\":\"0\",\"unitCode\":\"set\",\"warehouseId\":\"workshop\",\"unitCost\":\"4800.00\"},{\"itemCode\":\"WHEELS_HEAVY\",\"quantity\":\"0\",\"unitCode\":\"set\",\"warehouseId\":\"purchases\",\"unitCost\":\"7200.00\"},{\"itemCode\":\"WHEELS_HEAVY\",\"quantity\":\"0\",\"unitCode\":\"set\",\"warehouseId\":\"workshop\",\"unitCost\":\"7200.00\"},{\"itemCode\":\"EQUIP_BASE\",\"quantity\":\"0\",\"unitCode\":\"set\",\"warehouseId\":\"purchases\",\"unitCost\":\"5600.00\"},{\"itemCode\":\"EQUIP_BASE\",\"quantity\":\"0\",\"unitCode\":\"set\",\"warehouseId\":\"workshop\",\"unitCost\":\"5600.00\"},{\"itemCode\":\"EQUIP_PLUS\",\"quantity\":\"0\",\"unitCode\":\"set\",\"warehouseId\":\"purchases\",\"unitCost\":\"7600.00\"},{\"itemCode\":\"EQUIP_PLUS\",\"quantity\":\"0\",\"unitCode\":\"set\",\"warehouseId\":\"workshop\",\"unitCost\":\"7600.00\"}],\"initialPrices\":[{\"productCode\":\"CityRide\",\"price\":\"33800.00\"},{\"productCode\":\"SportDrive\",\"price\":\"40600.00\"},{\"productCode\":\"CargoMax\",\"price\":\"50600.00\"},{\"productCode\":\"TourPro\",\"price\":\"44600.00\"}],\"seed\":\"fixed\"}}"
+;
+
+@ВПроекте @НаСервере @ДоступноСКлиента
+метод ПримерСоответствий(): Строка
+    возврат "{\"items\":[{\"itemCode\":\"CityRide\",\"refKey\":\"\",\"characteristicId\":\"\",\"unitCode\":\"pcs\",\"coefficient\":\"1\"},{\"itemCode\":\"SportDrive\",\"refKey\":\"\",\"characteristicId\":\"\",\"unitCode\":\"pcs\",\"coefficient\":\"1\"},{\"itemCode\":\"CargoMax\",\"refKey\":\"\",\"characteristicId\":\"\",\"unitCode\":\"pcs\",\"coefficient\":\"1\"},{\"itemCode\":\"TourPro\",\"refKey\":\"\",\"characteristicId\":\"\",\"unitCode\":\"pcs\",\"coefficient\":\"1\"},{\"itemCode\":\"FRAME_STD\",\"refKey\":\"\",\"characteristicId\":\"\",\"unitCode\":\"pcs\",\"coefficient\":\"1\"},{\"itemCode\":\"FRAME_CARGO\",\"refKey\":\"\",\"characteristicId\":\"\",\"unitCode\":\"pcs\",\"coefficient\":\"1\"},{\"itemCode\":\"POWER_350\",\"refKey\":\"\",\"characteristicId\":\"\",\"unitCode\":\"set\",\"coefficient\":\"1\"},{\"itemCode\":\"POWER_500\",\"refKey\":\"\",\"characteristicId\":\"\",\"unitCode\":\"set\",\"coefficient\":\"1\"},{\"itemCode\":\"BAT_300\",\"refKey\":\"\",\"characteristicId\":\"\",\"unitCode\":\"pcs\",\"coefficient\":\"1\"},{\"itemCode\":\"BAT_500\",\"refKey\":\"\",\"characteristicId\":\"\",\"unitCode\":\"pcs\",\"coefficient\":\"1\"},{\"itemCode\":\"BAT_800\",\"refKey\":\"\",\"characteristicId\":\"\",\"unitCode\":\"pcs\",\"coefficient\":\"1\"},{\"itemCode\":\"WHEELS_STD\",\"refKey\":\"\",\"characteristicId\":\"\",\"unitCode\":\"set\",\"coefficient\":\"1\"},{\"itemCode\":\"WHEELS_HEAVY\",\"refKey\":\"\",\"characteristicId\":\"\",\"unitCode\":\"set\",\"coefficient\":\"1\"},{\"itemCode\":\"EQUIP_BASE\",\"refKey\":\"\",\"characteristicId\":\"\",\"unitCode\":\"set\",\"coefficient\":\"1\"},{\"itemCode\":\"EQUIP_PLUS\",\"refKey\":\"\",\"characteristicId\":\"\",\"unitCode\":\"set\",\"coefficient\":\"1\"}]}"
+;

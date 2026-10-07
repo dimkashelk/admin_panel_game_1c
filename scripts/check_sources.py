@@ -58,7 +58,7 @@ for path, source in SOURCES.items():
     blocks = []
     for number, line in enumerate(code.splitlines(), 1):
         text = line.strip()
-        if re.match(r'^(метод|если|для|пока|попытка)\b', text):
+        if re.match(r'^(метод|если|для|пока|попытка|исключение|структура)\b', text):
             blocks.append(number)
         elif text == ';':
             if not blocks:
@@ -79,10 +79,15 @@ for path, source in SOURCES.items():
         if module not in MODULES:
             continue
         module_path, _ = MODULES[module]
-        if method not in METHODS.get(module_path, set()):
+        if method not in METHODS.get(module_path, set()) and not re.search(r'^(?:исключение|структура) ' + re.escape(method) + r'\b', SOURCES.get(module_path, ''), re.M):
             fail(path, f'Unknown module method: {module}.{method}')
         if module_path.parent != path.parent and module_path.parent.name not in imports:
             fail(path, f'Missing source import: {module_path.parent.name} ({module}.{method})')
+    for enum, member in re.findall(r'\b(\w+)\.(\w+)(?![\w(])', code):
+        if enum in METADATA and METADATA[enum][1]['ВидЭлемента'] == 'Перечисление':
+            members = {e['Имя'] for e in METADATA[enum][1]['Элементы']}
+            if member not in members:
+                fail(path, f'Unknown enum member: {enum}.{member}')
     # Named DTO and table-row constructor fields are declared in YAML.
     for match in re.finditer(r'новый (\w+)(?:\.(\w+))?\(', code):
         name, child = match.groups()
@@ -115,6 +120,12 @@ for path, source in SOURCES.items():
                     fail(path, f'Unknown constructor field: {name}.{child or ""}.{field[1]}')
 
 for name, (path, descriptor) in METADATA.items():
+    if descriptor['ВидЭлемента'] == 'HttpСервис':
+        declared = METHODS.get(path.with_suffix('.xbsl'), set())
+        for node in nodes(descriptor):
+            for attribute in ('Обработчик', 'ЛюбойМетод'):
+                if attribute in node and node[attribute] not in declared:
+                    fail(path, f'Missing HTTP handler: {node[attribute]}')
     if descriptor['ВидЭлемента'] != 'КомпонентИнтерфейса':
         continue
     form_source = path.with_suffix('.xbsl')

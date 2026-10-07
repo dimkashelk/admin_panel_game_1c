@@ -1,0 +1,280 @@
+{
+  "settings": {
+    "profileId": "BICYCLE_SIMPLE",
+    "profileVersion": "1.0",
+    "executionMode": "basic",
+    "priceFixation": "before_sales",
+    "currency": "RUB",
+    "taxMode": "no_vat",
+    "roundCount": 4,
+    "calendar": [
+      {
+        "roundNumber": 0,
+        "gameMonth": "2027-01",
+        "documentDate": "2027-01-15"
+      },
+      {
+        "roundNumber": 1,
+        "gameMonth": "2027-02",
+        "documentDate": "2027-02-15"
+      },
+      {
+        "roundNumber": 2,
+        "gameMonth": "2027-03",
+        "documentDate": "2027-03-15"
+      },
+      {
+        "roundNumber": 3,
+        "gameMonth": "2027-04",
+        "documentDate": "2027-04-15"
+      },
+      {
+        "roundNumber": 4,
+        "gameMonth": "2027-05",
+        "documentDate": "2027-05-15"
+      }
+    ],
+    "products": [
+      {
+        "productCode": "CityRide",
+        "minPrice": "35000.00",
+        "maxPrice": "75000.00",
+        "vatRate": "0.00"
+      },
+      {
+        "productCode": "SportDrive",
+        "minPrice": "60000.00",
+        "maxPrice": "120000.00",
+        "vatRate": "0.00"
+      },
+      {
+        "productCode": "CargoMax",
+        "minPrice": "65000.00",
+        "maxPrice": "130000.00",
+        "vatRate": "0.00"
+      },
+      {
+        "productCode": "TourPro",
+        "minPrice": "65000.00",
+        "maxPrice": "125000.00",
+        "vatRate": "0.00"
+      }
+    ],
+    "procurementReduction": "cheapest_item_first_v1",
+    "productionReduction": "product_code_first_v1",
+    "allowSupplierDebt": false,
+    "allowCustomerDebt": false,
+    "pollIntervalSeconds": 5,
+    "requestTimeoutSeconds": 15,
+    "connectionLostSeconds": 60,
+    "maxClockSkewSeconds": 5
+  },
+  "prepare": {
+    "settingsHash": "0d487ca47b042e328a465397ee8268b7690633accac2d5301aeb30521f70bf65",
+    "initialCash": "0.00",
+    "currency": "RUB",
+    "balances": [
+      {
+        "itemCode": "CityRide",
+        "quantity": "15",
+        "unitCode": "pcs",
+        "warehouseId": "finished_goods",
+        "unitCost": "33800.00"
+      },
+      {
+        "itemCode": "SportDrive",
+        "quantity": "8",
+        "unitCode": "pcs",
+        "warehouseId": "finished_goods",
+        "unitCost": "40600.00"
+      },
+      {
+        "itemCode": "CargoMax",
+        "quantity": "4",
+        "unitCode": "pcs",
+        "warehouseId": "finished_goods",
+        "unitCost": "50600.00"
+      },
+      {
+        "itemCode": "TourPro",
+        "quantity": "6",
+        "unitCode": "pcs",
+        "warehouseId": "finished_goods",
+        "unitCost": "44600.00"
+      },
+      {
+        "itemCode": "FRAME_STD",
+        "quantity": "0",
+        "unitCode": "pcs",
+        "warehouseId": "purchases",
+        "unitCost": "6800.00"
+      },
+      {
+        "itemCode": "FRAME_STD",
+        "quantity": "0",
+        "unitCode": "pcs",
+        "warehouseId": "workshop",
+        "unitCost": "6800.00"
+      },
+      {
+        "itemCode": "FRAME_CARGO",
+        "quantity": "0",
+        "unitCode": "pcs",
+        "warehouseId": "purchases",
+        "unitCost": "10400.00"
+      },
+      {
+        "itemCode": "FRAME_CARGO",
+        "quantity": "0",
+        "unitCode": "pcs",
+        "warehouseId": "workshop",
+        "unitCost": "10400.00"
+      },
+      {
+        "itemCode": "POWER_350",
+        "quantity": "0",
+        "unitCode": "set",
+        "warehouseId": "purchases",
+        "unitCost": "9800.00"
+      },
+      {
+        "itemCode": "POWER_350",
+        "quantity": "0",
+        "unitCode": "set",
+        "warehouseId": "workshop",
+        "unitCost": "9800.00"
+      },
+      {
+        "itemCode": "POWER_500",
+        "quantity": "0",
+        "unitCode": "set",
+        "warehouseId": "purchases",
+        "unitCost": "12200.00"
+      },
+      {
+        "itemCode": "POWER_500",
+        "quantity": "0",
+        "unitCode": "set",
+        "warehouseId": "workshop",
+        "unitCost": "12200.00"
+      },
+      {
+        "itemCode": "BAT_300",
+        "quantity": "0",
+        "unitCode": "pcs",
+        "warehouseId": "purchases",
+        "unitCost": "6800.00"
+      },
+      {
+        "itemCode": "BAT_300",
+        "quantity": "0",
+        "unitCode": "pcs",
+        "warehouseId": "workshop",
+        "unitCost": "6800.00"
+      },
+      {
+        "itemCode": "BAT_500",
+        "quantity": "0",
+        "unitCode": "pcs",
+        "warehouseId": "purchases",
+        "unitCost": "9200.00"
+      },
+      {
+        "itemCode": "BAT_500",
+        "quantity": "0",
+        "unitCode": "pcs",
+        "warehouseId": "workshop",
+        "unitCost": "9200.00"
+      },
+      {
+        "itemCode": "BAT_800",
+        "quantity": "0",
+        "unitCode": "pcs",
+        "warehouseId": "purchases",
+        "unitCost": "13200.00"
+      },
+      {
+        "itemCode": "BAT_800",
+        "quantity": "0",
+        "unitCode": "pcs",
+        "warehouseId": "workshop",
+        "unitCost": "13200.00"
+      },
+      {
+        "itemCode": "WHEELS_STD",
+        "quantity": "0",
+        "unitCode": "set",
+        "warehouseId": "purchases",
+        "unitCost": "4800.00"
+      },
+      {
+        "itemCode": "WHEELS_STD",
+        "quantity": "0",
+        "unitCode": "set",
+        "warehouseId": "workshop",
+        "unitCost": "4800.00"
+      },
+      {
+        "itemCode": "WHEELS_HEAVY",
+        "quantity": "0",
+        "unitCode": "set",
+        "warehouseId": "purchases",
+        "unitCost": "7200.00"
+      },
+      {
+        "itemCode": "WHEELS_HEAVY",
+        "quantity": "0",
+        "unitCode": "set",
+        "warehouseId": "workshop",
+        "unitCost": "7200.00"
+      },
+      {
+        "itemCode": "EQUIP_BASE",
+        "quantity": "0",
+        "unitCode": "set",
+        "warehouseId": "purchases",
+        "unitCost": "5600.00"
+      },
+      {
+        "itemCode": "EQUIP_BASE",
+        "quantity": "0",
+        "unitCode": "set",
+        "warehouseId": "workshop",
+        "unitCost": "5600.00"
+      },
+      {
+        "itemCode": "EQUIP_PLUS",
+        "quantity": "0",
+        "unitCode": "set",
+        "warehouseId": "purchases",
+        "unitCost": "7600.00"
+      },
+      {
+        "itemCode": "EQUIP_PLUS",
+        "quantity": "0",
+        "unitCode": "set",
+        "warehouseId": "workshop",
+        "unitCost": "7600.00"
+      }
+    ],
+    "initialPrices": [
+      {
+        "productCode": "CityRide",
+        "price": "33800.00"
+      },
+      {
+        "productCode": "SportDrive",
+        "price": "40600.00"
+      },
+      {
+        "productCode": "CargoMax",
+        "price": "50600.00"
+      },
+      {
+        "productCode": "TourPro",
+        "price": "44600.00"
+      }
+    ],
+    "seed": "fixed"
+  }
+}

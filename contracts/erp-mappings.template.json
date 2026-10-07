@@ -1,0 +1,109 @@
+{
+  "items": [
+    {
+      "itemCode": "CityRide",
+      "refKey": "",
+      "characteristicId": "",
+      "unitCode": "pcs",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "SportDrive",
+      "refKey": "",
+      "characteristicId": "",
+      "unitCode": "pcs",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "CargoMax",
+      "refKey": "",
+      "characteristicId": "",
+      "unitCode": "pcs",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "TourPro",
+      "refKey": "",
+      "characteristicId": "",
+      "unitCode": "pcs",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "FRAME_STD",
+      "refKey": "",
+      "characteristicId": "",
+      "unitCode": "pcs",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "FRAME_CARGO",
+      "refKey": "",
+      "characteristicId": "",
+      "unitCode": "pcs",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "POWER_350",
+      "refKey": "",
+      "characteristicId": "",
+      "unitCode": "set",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "POWER_500",
+      "refKey": "",
+      "characteristicId": "",
+      "unitCode": "set",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "BAT_300",
+      "refKey": "",
+      "characteristicId": "",
+      "unitCode": "pcs",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "BAT_500",
+      "refKey": "",
+      "characteristicId": "",
+      "unitCode": "pcs",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "BAT_800",
+      "refKey": "",
+      "characteristicId": "",
+      "unitCode": "pcs",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "WHEELS_STD",
+      "refKey": "",
+      "characteristicId": "",
+      "unitCode": "set",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "WHEELS_HEAVY",
+      "refKey": "",
+      "characteristicId": "",
+      "unitCode": "set",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "EQUIP_BASE",
+      "refKey": "",
+      "characteristicId": "",
+      "unitCode": "set",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "EQUIP_PLUS",
+      "refKey": "",
+      "characteristicId": "",
+      "unitCode": "set",
+      "coefficient": "1"
+    }
+  ]
+}
