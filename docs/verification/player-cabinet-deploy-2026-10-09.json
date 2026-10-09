@@ -1,0 +1,79 @@
+{
+  "app": {
+    "id": "01a11178-7183-71ae-bfac-e21e4036537f",
+    "name": "Игра",
+    "uri": "https://app-312909758.1cmycloud.com/applications/game-dev",
+    "status": "Running",
+    "error": null,
+    "current-task": null,
+    "source": {
+      "type": "image",
+      "project-version-id": "01a12263-0f3c-7611-96b3-348b24f9a86e",
+      "image-id": "01a11176-5602-7e69-a523-f989b3b8f72d",
+      "project-name": "Игра",
+      "project-version": "1.0-40"
+    },
+    "technology-version": "10.0.3-20"
+  },
+  "task": {
+    "id": "01a12263-5401-77cf-a770-b29f1c68d11e",
+    "status": "Completed",
+    "operation-type": "UpdateApplicationConfiguration",
+    "start-date": "2026-10-09T20:38:17.508Z",
+    "end-date": "2026-10-09T20:38:30.779Z",
+    "application-id": "01a11178-7183-71ae-bfac-e21e4036537f",
+    "error-message": ""
+  },
+  "archiveSha256": "d1034821726cb07c1dd118712fb9aaa060e9b9b73d945293801d5719d43c3e74",
+  "sourceCommit": "a355b73cf745ce77c7c9adc6a9b907890c268868",
+  "dump": {
+    "id": "01a12262-6fac-76e0-87a4-130320c8429e",
+    "includes-users": false,
+    "includes-binary-data": false,
+    "include-collaboration-registration-data": false,
+    "status": "Ready",
+    "date-created": "2026-10-09T20:37:18.892Z",
+    "description": "auto-dump before deploy",
+    "dump-size-bytes": 9222448,
+    "technology-version": "10.0.3-20"
+  },
+  "previousDump": {
+    "id": "01a1225a-f970-7d4c-bd1f-79e2f25738d0",
+    "status": "Ready",
+    "dump-size-bytes": 8800462
+  },
+  "validation": {
+    "unitTests": 86,
+    "metadataFiles": 120,
+    "sourceFiles": 56,
+    "cloudCompilation": true
+  },
+  "uiVerification": {
+    "cabinetOpened": true,
+    "horizontalStagePanel": true,
+    "randomOrdersObserved": 8,
+    "demonstrationOrderClaimedBy": "Альфа",
+    "claimVisibleToOtherTeam": true,
+    "finishPhaseConfirmed": true,
+    "finishPreparationConfirmedOnFinalBuild": true,
+    "pauseConfirmed": true,
+    "browserWarningsOrErrors": false,
+    "separatePlayerAccountsTested": false,
+    "databaseRaceTested": false,
+    "realERPCalls": false,
+    "marketTestGame": "Проверка кабинета игрока 09.10.2026",
+    "marketTestGameFinalState": "Пауза",
+    "preparationTestGame": "Проверка подготовки игрока 09.10.2026",
+    "preparationTestGameFinalState": "Подготовка",
+    "screenshots": [
+      "docs/assets/player-cabinet-deployed-2026-10-09.jpg",
+      "docs/assets/player-preparation-deployed-2026-10-09.jpg"
+    ]
+  },
+  "fixedIssues": [
+    "Typed expressions for UI label values",
+    "No explicit contents on list row container",
+    "Stage declaration key limited to UUID length",
+    "Preparation token generated in demonstration mode"
+  ]
+}
