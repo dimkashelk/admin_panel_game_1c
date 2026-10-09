@@ -1,0 +1,50 @@
+{
+  "app": {
+    "id": "01a11178-7183-71ae-bfac-e21e4036537f",
+    "name": "Игра",
+    "uri": "https://app-312909758.1cmycloud.com/applications/game-dev",
+    "status": "Running",
+    "error": null,
+    "current-task": null,
+    "source": {
+      "type": "image",
+      "project-version-id": "01a11fdd-2bf2-7ea0-996a-7bbdde6c1efb",
+      "image-id": "01a11176-5602-7e69-a523-f989b3b8f72d",
+      "project-name": "Игра",
+      "project-version": "1.0-37"
+    },
+    "technology-version": "10.0.3-20"
+  },
+  "task": {
+    "id": "01a11fdd-6f49-7588-97e7-f3cf502ed31d",
+    "status": "Completed",
+    "operation-type": "UpdateApplicationConfiguration",
+    "start-date": "2026-10-09T08:52:48.225Z",
+    "end-date": "2026-10-09T08:53:01.095Z",
+    "group-id": null,
+    "application-id": "01a11178-7183-71ae-bfac-e21e4036537f",
+    "error-message": ""
+  },
+  "archiveSha256": "b70c319d45d4a577ce925fa4c1ed5392698fc1be44e61b9e85547ab85c800813",
+  "sourceCommit": "b6242a817e6be2a2ca559b9a2912dbbf4e3d4ab2",
+  "dump": {
+    "id": "01a11fdb-a4fe-7ded-884e-8178359f0a10",
+    "status": "Ready",
+    "date-created": "2026-10-09T08:50:50.750Z",
+    "dump-size-bytes": 8784527,
+    "includes-users": false,
+    "includes-binary-data": false,
+    "include-collaboration-registration-data": false
+  },
+  "uiVerification": {
+    "formOpened": true,
+    "readMarketButtonVisible": true,
+    "orderGuidFieldVisible": true,
+    "postOrderButtonVisible": true,
+    "connectionAddressVerified": "https://edu.1cfresh.com/a/edu_erp_spbpu/1538260/odata/standard.odata/",
+    "connectionActive": false,
+    "connectionChanged": false,
+    "erpCallsFromPublishedForm": false,
+    "screenshot": "docs/assets/odata-posting-deployed-2026-10-09.jpg"
+  }
+}

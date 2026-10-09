@@ -290,7 +290,7 @@
     "metadataWarnings": 35,
     "nativeHttpRead": true,
     "nativeHttpPosting": true,
-    "deployed": false
+    "deployed": true
   },
   "odataPostingVerification": {
     "action": "Post()",
@@ -309,6 +309,12 @@
       "posted": true,
       "alreadyPosted": false
     },
-    "deployed": false
+    "deployed": true
+  },
+  "deployment": {
+    "version": "1.0-37",
+    "assemblyId": "01a11fdd-2bf2-7ea0-996a-7bbdde6c1efb",
+    "sourceCommit": "b6242a817e6be2a2ca559b9a2912dbbf4e3d4ab2",
+    "verification": "odata-posting-deploy-2026-10-09.json"
   }
 }
