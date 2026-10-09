@@ -18,7 +18,7 @@ class ERP(s.OData):
         if method=='GET' and params:
             if self.bad_schema==path:raise s.SetupError('Поле не опубликовано')
             return {'value':[]}
-        if method=='POST' and path.endswith('/Post'):
+        if method=='POST' and path.endswith('/Post()'):
             key=path.split("guid'")[1].split("'")[0];entity=path.split('(')[0]
             record=self.records[entity,key];record['Posted']=True
             self.stock+=record['Quantity'];self.writes.append((method,path))

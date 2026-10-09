@@ -158,7 +158,7 @@ def apply(client,profile,options=None):
                     if not actual.get('Posted'):
                         if not equivalent(actual,fields):client.request(path,'PATCH',fields)
                         if not equivalent(client.read(e['entity'],e['refKey']),fields):raise SetupError('документ не прошёл сверку до проведения')
-                        client.request(path+'/Post','POST')
+                        client.request(path+'/Post()','POST')
                     if not client.read(e['entity'],e['refKey']).get('Posted'):raise SetupError('документ не проведён')
                 expected=copy.deepcopy(fields)
                 if n['key'].startswith('spec_'):expected.pop('Статус',None)

@@ -1,0 +1,314 @@
+{
+  "database": "https://edu.1cfresh.com/a/edu_erp_spbpu/1538260/",
+  "asOf": "2027-01-15T23:59:59",
+  "organizationName": "ДвижжОК ООО",
+  "warehouseId": "ceafa4c8-9f9e-4d8c-96e4-1d803a72d9f0",
+  "warehouseName": "Готовая продукция",
+  "priceTypeId": "fa045eb1-38ee-4aa3-8b0c-20189cae5f55",
+  "priceTypeName": "Оптовая Велосипеды",
+  "agreementId": "8eac0457-24e9-4bb8-acbc-36bc9ea3dd08",
+  "customerId": "7048c8f9-51f0-4703-b5bf-1d5d5503d2de",
+  "customerName": "Единый покупатель велосипедов",
+  "priceIncludesVAT": false,
+  "offers": [
+    {
+      "productCode": "CityRide",
+      "refKey": "9ec3faa5-114c-46f1-8cc4-853abdfdd681",
+      "description": "Городской велосипед",
+      "price": "33800.00",
+      "pricePeriod": "2027-01-15T00:00:00",
+      "physicalQuantity": "15",
+      "shippingQuantity": "15",
+      "availableQuantity": 0,
+      "unitCode": "pcs"
+    },
+    {
+      "productCode": "SportDrive",
+      "refKey": "99a40659-8cf7-4380-a058-99952edbdf80",
+      "description": "Спортивный велосипед",
+      "price": "40600.00",
+      "pricePeriod": "2027-01-15T00:00:00",
+      "physicalQuantity": "8",
+      "shippingQuantity": "8",
+      "availableQuantity": 0,
+      "unitCode": "pcs"
+    },
+    {
+      "productCode": "CargoMax",
+      "refKey": "f7e9a99f-38e9-4b0a-b8be-7c7c2651f0fa",
+      "description": "Грузовой велосипед",
+      "price": "50600.00",
+      "pricePeriod": "2027-01-15T00:00:00",
+      "physicalQuantity": "4",
+      "shippingQuantity": "4",
+      "availableQuantity": 0,
+      "unitCode": "pcs"
+    },
+    {
+      "productCode": "TourPro",
+      "refKey": "f875a869-e544-4eb8-a269-7015f4b3e283",
+      "description": "Туристический велосипед",
+      "price": "44600.00",
+      "pricePeriod": "2027-01-15T00:00:00",
+      "physicalQuantity": "6",
+      "shippingQuantity": "6",
+      "availableQuantity": 0,
+      "unitCode": "pcs"
+    }
+  ],
+  "mappings": {
+    "items": [
+      {
+        "itemCode": "CityRide",
+        "refKey": "9ec3faa5-114c-46f1-8cc4-853abdfdd681",
+        "characteristicId": "",
+        "unitCode": "pcs",
+        "coefficient": "1"
+      },
+      {
+        "itemCode": "SportDrive",
+        "refKey": "99a40659-8cf7-4380-a058-99952edbdf80",
+        "characteristicId": "",
+        "unitCode": "pcs",
+        "coefficient": "1"
+      },
+      {
+        "itemCode": "CargoMax",
+        "refKey": "f7e9a99f-38e9-4b0a-b8be-7c7c2651f0fa",
+        "characteristicId": "",
+        "unitCode": "pcs",
+        "coefficient": "1"
+      },
+      {
+        "itemCode": "TourPro",
+        "refKey": "f875a869-e544-4eb8-a269-7015f4b3e283",
+        "characteristicId": "",
+        "unitCode": "pcs",
+        "coefficient": "1"
+      },
+      {
+        "itemCode": "FRAME_STD",
+        "refKey": "05e852e5-553e-469a-b7f0-bf772af19ec1",
+        "characteristicId": "",
+        "unitCode": "pcs",
+        "coefficient": "1"
+      },
+      {
+        "itemCode": "FRAME_CARGO",
+        "refKey": "2657f325-aa63-4ab2-ab49-147fbac7ecf1",
+        "characteristicId": "",
+        "unitCode": "pcs",
+        "coefficient": "1"
+      },
+      {
+        "itemCode": "WHEELS_STD",
+        "refKey": "4de9d167-5697-4ff8-8ac6-b06a9cb698d8",
+        "characteristicId": "",
+        "unitCode": "set",
+        "coefficient": "1"
+      },
+      {
+        "itemCode": "WHEELS_HEAVY",
+        "refKey": "8c3e77b4-f60d-4e66-91b9-4d9ead878052",
+        "characteristicId": "",
+        "unitCode": "set",
+        "coefficient": "1"
+      },
+      {
+        "itemCode": "EQUIP_BASE",
+        "refKey": "f25aa095-7133-4229-ab8e-cd1748f54e50",
+        "characteristicId": "",
+        "unitCode": "set",
+        "coefficient": "1"
+      },
+      {
+        "itemCode": "EQUIP_PLUS",
+        "refKey": "65b8e2be-fa1f-4dc2-b5c2-52dc39057d91",
+        "characteristicId": "",
+        "unitCode": "set",
+        "coefficient": "1"
+      },
+      {
+        "itemCode": "BAT_300",
+        "refKey": "2f189bc6-2382-404a-ae0e-7e7d1eca7019",
+        "characteristicId": "6b00cc91-a468-472f-a996-28ee2ce4a766",
+        "unitCode": "pcs",
+        "coefficient": "1"
+      },
+      {
+        "itemCode": "BAT_500",
+        "refKey": "2f189bc6-2382-404a-ae0e-7e7d1eca7019",
+        "characteristicId": "48c39090-4544-4309-b398-ce2dd324740d",
+        "unitCode": "pcs",
+        "coefficient": "1"
+      },
+      {
+        "itemCode": "BAT_800",
+        "refKey": "2f189bc6-2382-404a-ae0e-7e7d1eca7019",
+        "characteristicId": "0f14ada2-2c9c-416e-8059-f63fbb7dab07",
+        "unitCode": "pcs",
+        "coefficient": "1"
+      },
+      {
+        "itemCode": "POWER_350",
+        "refKey": "e30b32c8-a941-403b-b8cf-e147945f752b",
+        "characteristicId": "85a7a54f-a2f7-447e-959b-95fbcaa36d77",
+        "unitCode": "set",
+        "coefficient": "1"
+      },
+      {
+        "itemCode": "POWER_500",
+        "refKey": "e30b32c8-a941-403b-b8cf-e147945f752b",
+        "characteristicId": "ca619ae7-9651-4345-ab63-8d7df7a5cefc",
+        "unitCode": "set",
+        "coefficient": "1"
+      }
+    ]
+  },
+  "verifiedAt": "2026-10-09",
+  "order": {
+    "Ref_Key": "953b936c-c3b7-11f1-b003-7cc2553c1b47",
+    "Number": "0000-000001",
+    "Date": "2027-01-15T12:00:00",
+    "Posted": true,
+    "Статус": "КОтгрузке",
+    "СуммаДокумента": 1301800,
+    "Комментарий": "BICYCLE_MARKET/1538260/2027-01/initial_sales",
+    "lines": [
+      {
+        "Номенклатура_Key": "9ec3faa5-114c-46f1-8cc4-853abdfdd681",
+        "Количество": 15,
+        "Цена": 33800,
+        "Сумма": 507000,
+        "ВариантОбеспечения": "Отгрузить"
+      },
+      {
+        "Номенклатура_Key": "99a40659-8cf7-4380-a058-99952edbdf80",
+        "Количество": 8,
+        "Цена": 40600,
+        "Сумма": 324800,
+        "ВариантОбеспечения": "Отгрузить"
+      },
+      {
+        "Номенклатура_Key": "f7e9a99f-38e9-4b0a-b8be-7c7c2651f0fa",
+        "Количество": 4,
+        "Цена": 50600,
+        "Сумма": 202400,
+        "ВариантОбеспечения": "Отгрузить"
+      },
+      {
+        "Номенклатура_Key": "f875a869-e544-4eb8-a269-7015f4b3e283",
+        "Количество": 6,
+        "Цена": 44600,
+        "Сумма": 267600,
+        "ВариантОбеспечения": "Отгрузить"
+      }
+    ],
+    "creationMode": "OData draft, native ERP UI posting"
+  },
+  "offersBeforeOrder": [
+    {
+      "productCode": "CityRide",
+      "refKey": "9ec3faa5-114c-46f1-8cc4-853abdfdd681",
+      "description": "Городской велосипед",
+      "price": "33800.00",
+      "pricePeriod": "2027-01-15T00:00:00",
+      "physicalQuantity": "15",
+      "shippingQuantity": "0",
+      "availableQuantity": 15,
+      "unitCode": "pcs"
+    },
+    {
+      "productCode": "SportDrive",
+      "refKey": "99a40659-8cf7-4380-a058-99952edbdf80",
+      "description": "Спортивный велосипед",
+      "price": "40600.00",
+      "pricePeriod": "2027-01-15T00:00:00",
+      "physicalQuantity": "8",
+      "shippingQuantity": "0",
+      "availableQuantity": 8,
+      "unitCode": "pcs"
+    },
+    {
+      "productCode": "CargoMax",
+      "refKey": "f7e9a99f-38e9-4b0a-b8be-7c7c2651f0fa",
+      "description": "Грузовой велосипед",
+      "price": "50600.00",
+      "pricePeriod": "2027-01-15T00:00:00",
+      "physicalQuantity": "4",
+      "shippingQuantity": "0",
+      "availableQuantity": 4,
+      "unitCode": "pcs"
+    },
+    {
+      "productCode": "TourPro",
+      "refKey": "f875a869-e544-4eb8-a269-7015f4b3e283",
+      "description": "Туристический велосипед",
+      "price": "44600.00",
+      "pricePeriod": "2027-01-15T00:00:00",
+      "physicalQuantity": "6",
+      "shippingQuantity": "0",
+      "availableQuantity": 6,
+      "unitCode": "pcs"
+    }
+  ],
+  "nativeXbslReadVerified": true,
+  "marketCalculation": {
+    "scope": "single participant, base scenario, initial round",
+    "algorithm": "market-v1/price_shares",
+    "products": [
+      {
+        "productCode": "CityRide",
+        "demand": 185,
+        "orderedQuantity": 15,
+        "amount": "507000.00"
+      },
+      {
+        "productCode": "SportDrive",
+        "demand": 65,
+        "orderedQuantity": 8,
+        "amount": "324800.00"
+      },
+      {
+        "productCode": "CargoMax",
+        "demand": 177,
+        "orderedQuantity": 4,
+        "amount": "202400.00"
+      },
+      {
+        "productCode": "TourPro",
+        "demand": 99,
+        "orderedQuantity": 6,
+        "amount": "267600.00"
+      }
+    ]
+  },
+  "localValidation": {
+    "testsPassed": 83,
+    "nativeProtocolSchemaCases": 65,
+    "metadataErrors": 0,
+    "metadataWarnings": 35,
+    "nativeHttpRead": true,
+    "nativeHttpPosting": true,
+    "deployed": false
+  },
+  "odataPostingVerification": {
+    "action": "Post()",
+    "source": "НастройкаБазOData.ПровестиЗаказOData",
+    "nativeElementVersion": "10.0",
+    "unpostViaOData": true,
+    "postedBeforeNativeCall": false,
+    "postedAfterNativeCall": true,
+    "repeatSkippedPosting": true,
+    "orderDataUnchanged": true,
+    "shippingBalanceUnchanged": true,
+    "result": {
+      "refKey": "953b936c-c3b7-11f1-b003-7cc2553c1b47",
+      "number": "0000-000001",
+      "date": "2027-01-15T12:00:00",
+      "posted": true,
+      "alreadyPosted": false
+    },
+    "deployed": false
+  }
+}
