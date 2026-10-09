@@ -26,8 +26,8 @@ class Interpolations(ast.NodeTransformer):
             for index, value in enumerate(pieces)])
 
 
-def load_form(name, service):
-    path = xbsl.ROOT / 'Управление' / f'{name}.yaml'
+def load_form(name, service, subsystem='Управление'):
+    path = xbsl.ROOT / subsystem / f'{name}.yaml'
     descriptor = yaml.safe_load(path.read_text())
     original_expression = xbsl.expression
 
@@ -36,10 +36,9 @@ def load_form(name, service):
         for index in range(0, len(parts), 2):
             parts[index] = re.sub(r'\b(\d+)с\b', r'\1', parts[index])
             parts[index] = re.sub(r'&(\w+)', r'\1', parts[index])
-            parts[index] = parts[index].replace(
-                'Массив<ЭлементСпискаЗначений<УчастникиИгры.Ссылка?>>', 'XArray')
-            parts[index] = parts[index].replace(
-                'ЭлементСпискаЗначений<УчастникиИгры.Ссылка?>', 'ЭлементСпискаЗначений')
+            parts[index] = re.sub(r'Массив<ЭлементСпискаЗначений<\w+\.Ссылка\?>>', 'XArray', parts[index])
+            parts[index] = re.sub(r'ЭлементСпискаЗначений<\w+\.Ссылка\?>', 'ЭлементСпискаЗначений', parts[index])
+            parts[index] = re.sub(r'<\w+\.Ссылка>\[\]', 'XArray()', parts[index])
         return original_expression(''.join(parts))
 
     try:

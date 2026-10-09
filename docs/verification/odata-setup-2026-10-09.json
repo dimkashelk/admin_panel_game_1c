@@ -1,0 +1,522 @@
+{
+  "profile": "BICYCLE_SIMPLE",
+  "entries": [
+    {
+      "key": "pcs",
+      "action": "reuse",
+      "entity": "Catalog_УпаковкиЕдиницыИзмерения",
+      "refKey": "5f0a2a38-b3a2-11ee-9538-7cfe90a2c5c1"
+    },
+    {
+      "key": "vat",
+      "action": "reuse",
+      "entity": "Catalog_СтавкиНДС",
+      "refKey": "3df4f6b1-b3a2-11ee-9538-7cfe90a2c5c1"
+    },
+    {
+      "key": "rub",
+      "action": "reuse",
+      "entity": "Catalog_Валюты",
+      "refKey": "4be945ce-b3a2-11ee-9538-7cfe90a2c5c1"
+    },
+    {
+      "key": "organization",
+      "action": "reuse",
+      "entity": "Catalog_Организации",
+      "refKey": "bab54812-c5e8-11ee-9c8f-7cfe90a5d911"
+    },
+    {
+      "key": "set",
+      "action": "reuse",
+      "entity": "Catalog_УпаковкиЕдиницыИзмерения",
+      "refKey": "f1cb4777-5169-463e-896f-4b7f8cb6eb6b"
+    },
+    {
+      "key": "gfu_components",
+      "action": "reuse",
+      "entity": "Catalog_ГруппыФинансовогоУчетаНоменклатуры",
+      "refKey": "47ed66c6-e6d5-4635-8152-a305ab77769d"
+    },
+    {
+      "key": "gfu_products",
+      "action": "reuse",
+      "entity": "Catalog_ГруппыФинансовогоУчетаНоменклатуры",
+      "refKey": "38916a4a-3683-4a0e-8326-8cdd0db5061d"
+    },
+    {
+      "key": "kind_plain",
+      "action": "reuse",
+      "entity": "Catalog_ВидыНоменклатуры",
+      "refKey": "6cc12613-0054-4bcf-8f02-e05be4ff8f9e"
+    },
+    {
+      "key": "kind_char",
+      "action": "reuse",
+      "entity": "Catalog_ВидыНоменклатуры",
+      "refKey": "7ba39679-34a4-48dc-8db3-18f8ec8457bd"
+    },
+    {
+      "key": "kind_product",
+      "action": "reuse",
+      "entity": "Catalog_ВидыНоменклатуры",
+      "refKey": "51c2dfb0-1636-4c66-b3a8-d49b1253d41e"
+    },
+    {
+      "key": "CityRide",
+      "action": "reuse",
+      "entity": "Catalog_Номенклатура",
+      "refKey": "9ec3faa5-114c-46f1-8cc4-853abdfdd681"
+    },
+    {
+      "key": "SportDrive",
+      "action": "reuse",
+      "entity": "Catalog_Номенклатура",
+      "refKey": "99a40659-8cf7-4380-a058-99952edbdf80"
+    },
+    {
+      "key": "CargoMax",
+      "action": "reuse",
+      "entity": "Catalog_Номенклатура",
+      "refKey": "f7e9a99f-38e9-4b0a-b8be-7c7c2651f0fa"
+    },
+    {
+      "key": "TourPro",
+      "action": "reuse",
+      "entity": "Catalog_Номенклатура",
+      "refKey": "f875a869-e544-4eb8-a269-7015f4b3e283"
+    },
+    {
+      "key": "FRAME_STD",
+      "action": "reuse",
+      "entity": "Catalog_Номенклатура",
+      "refKey": "05e852e5-553e-469a-b7f0-bf772af19ec1"
+    },
+    {
+      "key": "FRAME_CARGO",
+      "action": "reuse",
+      "entity": "Catalog_Номенклатура",
+      "refKey": "2657f325-aa63-4ab2-ab49-147fbac7ecf1"
+    },
+    {
+      "key": "WHEELS_STD",
+      "action": "reuse",
+      "entity": "Catalog_Номенклатура",
+      "refKey": "4de9d167-5697-4ff8-8ac6-b06a9cb698d8"
+    },
+    {
+      "key": "WHEELS_HEAVY",
+      "action": "reuse",
+      "entity": "Catalog_Номенклатура",
+      "refKey": "8c3e77b4-f60d-4e66-91b9-4d9ead878052"
+    },
+    {
+      "key": "EQUIP_BASE",
+      "action": "reuse",
+      "entity": "Catalog_Номенклатура",
+      "refKey": "f25aa095-7133-4229-ab8e-cd1748f54e50"
+    },
+    {
+      "key": "EQUIP_PLUS",
+      "action": "reuse",
+      "entity": "Catalog_Номенклатура",
+      "refKey": "65b8e2be-fa1f-4dc2-b5c2-52dc39057d91"
+    },
+    {
+      "key": "battery",
+      "action": "reuse",
+      "entity": "Catalog_Номенклатура",
+      "refKey": "2f189bc6-2382-404a-ae0e-7e7d1eca7019"
+    },
+    {
+      "key": "power",
+      "action": "reuse",
+      "entity": "Catalog_Номенклатура",
+      "refKey": "e30b32c8-a941-403b-b8cf-e147945f752b"
+    },
+    {
+      "key": "BAT_300",
+      "action": "reuse",
+      "entity": "Catalog_ХарактеристикиНоменклатуры",
+      "refKey": "6b00cc91-a468-472f-a996-28ee2ce4a766"
+    },
+    {
+      "key": "BAT_500",
+      "action": "reuse",
+      "entity": "Catalog_ХарактеристикиНоменклатуры",
+      "refKey": "48c39090-4544-4309-b398-ce2dd324740d"
+    },
+    {
+      "key": "BAT_800",
+      "action": "reuse",
+      "entity": "Catalog_ХарактеристикиНоменклатуры",
+      "refKey": "0f14ada2-2c9c-416e-8059-f63fbb7dab07"
+    },
+    {
+      "key": "POWER_350",
+      "action": "reuse",
+      "entity": "Catalog_ХарактеристикиНоменклатуры",
+      "refKey": "85a7a54f-a2f7-447e-959b-95fbcaa36d77"
+    },
+    {
+      "key": "POWER_500",
+      "action": "reuse",
+      "entity": "Catalog_ХарактеристикиНоменклатуры",
+      "refKey": "ca619ae7-9651-4345-ab63-8d7df7a5cefc"
+    },
+    {
+      "key": "department",
+      "action": "reuse",
+      "entity": "Catalog_СтруктураПредприятия",
+      "refKey": "ddd24b75-c3af-11f1-b003-7cc2553c1b47"
+    },
+    {
+      "key": "purchases",
+      "action": "reuse",
+      "entity": "Catalog_Склады",
+      "refKey": "c34cb3a0-0ba7-4c67-9002-2dabe5c2f047"
+    },
+    {
+      "key": "finished_goods",
+      "action": "reuse",
+      "entity": "Catalog_Склады",
+      "refKey": "ceafa4c8-9f9e-4d8c-96e4-1d803a72d9f0"
+    },
+    {
+      "key": "workshop",
+      "action": "reuse",
+      "entity": "Catalog_Склады",
+      "refKey": "e113d22a-692b-41ab-bae9-5e3c74477fc1"
+    },
+    {
+      "key": "supplier",
+      "action": "reuse",
+      "entity": "Catalog_Партнеры",
+      "refKey": "721939a3-fea3-451a-90d9-57f1de349225"
+    },
+    {
+      "key": "counterparty_supplier",
+      "action": "reuse",
+      "entity": "Catalog_Контрагенты",
+      "refKey": "532a12bd-b8fa-4c74-956b-57a328112a0e"
+    },
+    {
+      "key": "customer",
+      "action": "reuse",
+      "entity": "Catalog_Партнеры",
+      "refKey": "7048c8f9-51f0-4703-b5bf-1d5d5503d2de"
+    },
+    {
+      "key": "counterparty_customer",
+      "action": "reuse",
+      "entity": "Catalog_Контрагенты",
+      "refKey": "45e6b35c-191e-48f6-8593-40d407ba9b39"
+    },
+    {
+      "key": "sales_price",
+      "action": "reuse",
+      "entity": "Catalog_ВидыЦен",
+      "refKey": "fa045eb1-38ee-4aa3-8b0c-20189cae5f55"
+    },
+    {
+      "key": "purchase_price",
+      "action": "reuse",
+      "entity": "Catalog_ВидыЦен",
+      "refKey": "5f676b42-2e3a-42b4-96c4-5f1ff12cc3aa"
+    },
+    {
+      "key": "supplier_price",
+      "action": "reuse",
+      "entity": "Catalog_ВидыЦенПоставщиков",
+      "refKey": "ed324d11-a961-4eb9-bb70-2797bdd51b56"
+    },
+    {
+      "key": "planning",
+      "action": "reuse",
+      "entity": "Catalog_СценарииТоварногоПланирования",
+      "refKey": "221e3957-fed4-403a-9d75-018f9a2db34a"
+    },
+    {
+      "key": "plan_purchases",
+      "action": "reuse",
+      "entity": "Catalog_ВидыПланов",
+      "refKey": "36270c7a-ef46-4e80-b59a-0900b1f45a9b"
+    },
+    {
+      "key": "plan_sales",
+      "action": "reuse",
+      "entity": "Catalog_ВидыПланов",
+      "refKey": "ad409221-1738-4ac4-a3a7-22782b14e8d0"
+    },
+    {
+      "key": "plan_production",
+      "action": "reuse",
+      "entity": "Catalog_ВидыПланов",
+      "refKey": "9abdbe6e-fee2-43f5-b145-d9d01fc7afb9"
+    },
+    {
+      "key": "plan_products",
+      "action": "reuse",
+      "entity": "Catalog_ВидыПланов",
+      "refKey": "e06e0cb4-d9d6-49c8-8611-50c7dfe85adb"
+    },
+    {
+      "key": "plan_components",
+      "action": "reuse",
+      "entity": "Catalog_ВидыПланов",
+      "refKey": "e148c082-b91e-49a2-9a44-456f9b612d9e"
+    },
+    {
+      "key": "spec_CityRide",
+      "action": "reuse",
+      "entity": "Catalog_РесурсныеСпецификации",
+      "refKey": "7e50d903-4548-4a99-8017-d552d18e842b"
+    },
+    {
+      "key": "stage_CityRide",
+      "action": "reuse",
+      "entity": "Catalog_ЭтапыПроизводства",
+      "refKey": "b0ebaa99-eeb7-4793-9134-a442bd229e47"
+    },
+    {
+      "key": "finish_CityRide",
+      "action": "finish",
+      "entity": "Catalog_РесурсныеСпецификации",
+      "refKey": "7e50d903-4548-4a99-8017-d552d18e842b"
+    },
+    {
+      "key": "spec_SportDrive",
+      "action": "reuse",
+      "entity": "Catalog_РесурсныеСпецификации",
+      "refKey": "09016c1b-0132-42b5-92b9-f60ff0305647"
+    },
+    {
+      "key": "stage_SportDrive",
+      "action": "reuse",
+      "entity": "Catalog_ЭтапыПроизводства",
+      "refKey": "21298141-e262-43e8-aaea-4976ce296466"
+    },
+    {
+      "key": "finish_SportDrive",
+      "action": "finish",
+      "entity": "Catalog_РесурсныеСпецификации",
+      "refKey": "09016c1b-0132-42b5-92b9-f60ff0305647"
+    },
+    {
+      "key": "spec_CargoMax",
+      "action": "reuse",
+      "entity": "Catalog_РесурсныеСпецификации",
+      "refKey": "f89164a7-d09a-4d1e-9f4d-76bb83c91d3e"
+    },
+    {
+      "key": "stage_CargoMax",
+      "action": "reuse",
+      "entity": "Catalog_ЭтапыПроизводства",
+      "refKey": "348cf665-e712-427d-9c7a-19c0c865a2b4"
+    },
+    {
+      "key": "finish_CargoMax",
+      "action": "finish",
+      "entity": "Catalog_РесурсныеСпецификации",
+      "refKey": "f89164a7-d09a-4d1e-9f4d-76bb83c91d3e"
+    },
+    {
+      "key": "spec_TourPro",
+      "action": "reuse",
+      "entity": "Catalog_РесурсныеСпецификации",
+      "refKey": "11b19d85-5237-4ecf-9845-3c1faef0ef14"
+    },
+    {
+      "key": "stage_TourPro",
+      "action": "reuse",
+      "entity": "Catalog_ЭтапыПроизводства",
+      "refKey": "a5256895-d7a6-40ce-b874-c289ef0074b0"
+    },
+    {
+      "key": "finish_TourPro",
+      "action": "finish",
+      "entity": "Catalog_РесурсныеСпецификации",
+      "refKey": "11b19d85-5237-4ecf-9845-3c1faef0ef14"
+    },
+    {
+      "key": "agreement_supplier",
+      "action": "reuse",
+      "entity": "Catalog_СоглашенияСПоставщиками",
+      "refKey": "0f07c940-c3b1-11f1-b003-7cc2553c1b47"
+    },
+    {
+      "key": "finish_agreement_supplier",
+      "action": "finish",
+      "entity": "Catalog_СоглашенияСПоставщиками",
+      "refKey": "0f07c940-c3b1-11f1-b003-7cc2553c1b47"
+    },
+    {
+      "key": "agreement_customer",
+      "action": "reuse",
+      "entity": "Catalog_СоглашенияСКлиентами",
+      "refKey": "8eac0457-24e9-4bb8-acbc-36bc9ea3dd08"
+    },
+    {
+      "key": "finish_agreement_customer",
+      "action": "finish",
+      "entity": "Catalog_СоглашенияСКлиентами",
+      "refKey": "8eac0457-24e9-4bb8-acbc-36bc9ea3dd08"
+    },
+    {
+      "key": "initial_prices",
+      "action": "reuse",
+      "entity": "Document_УстановкаЦенНоменклатуры",
+      "refKey": "3ac30494-2f41-4cfe-8e96-16f5742ba605"
+    },
+    {
+      "key": "initial_supplier_prices",
+      "action": "reuse",
+      "entity": "Document_РегистрацияЦенНоменклатурыПоставщика",
+      "refKey": "b3b98ac6-364f-415e-941a-3243541bf9a9"
+    },
+    {
+      "key": "initial_stock",
+      "action": "reuse",
+      "entity": "Document_ВводОстатковТоваров",
+      "refKey": "ed67e43f-294c-47bb-af36-0ef51aa90176"
+    }
+  ],
+  "items": [
+    {
+      "itemCode": "CityRide",
+      "refKey": "9ec3faa5-114c-46f1-8cc4-853abdfdd681",
+      "characteristicId": "",
+      "unitCode": "pcs",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "SportDrive",
+      "refKey": "99a40659-8cf7-4380-a058-99952edbdf80",
+      "characteristicId": "",
+      "unitCode": "pcs",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "CargoMax",
+      "refKey": "f7e9a99f-38e9-4b0a-b8be-7c7c2651f0fa",
+      "characteristicId": "",
+      "unitCode": "pcs",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "TourPro",
+      "refKey": "f875a869-e544-4eb8-a269-7015f4b3e283",
+      "characteristicId": "",
+      "unitCode": "pcs",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "FRAME_STD",
+      "refKey": "05e852e5-553e-469a-b7f0-bf772af19ec1",
+      "characteristicId": "",
+      "unitCode": "pcs",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "FRAME_CARGO",
+      "refKey": "2657f325-aa63-4ab2-ab49-147fbac7ecf1",
+      "characteristicId": "",
+      "unitCode": "pcs",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "WHEELS_STD",
+      "refKey": "4de9d167-5697-4ff8-8ac6-b06a9cb698d8",
+      "characteristicId": "",
+      "unitCode": "set",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "WHEELS_HEAVY",
+      "refKey": "8c3e77b4-f60d-4e66-91b9-4d9ead878052",
+      "characteristicId": "",
+      "unitCode": "set",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "EQUIP_BASE",
+      "refKey": "f25aa095-7133-4229-ab8e-cd1748f54e50",
+      "characteristicId": "",
+      "unitCode": "set",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "EQUIP_PLUS",
+      "refKey": "65b8e2be-fa1f-4dc2-b5c2-52dc39057d91",
+      "characteristicId": "",
+      "unitCode": "set",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "BAT_300",
+      "refKey": "2f189bc6-2382-404a-ae0e-7e7d1eca7019",
+      "characteristicId": "6b00cc91-a468-472f-a996-28ee2ce4a766",
+      "unitCode": "pcs",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "BAT_500",
+      "refKey": "2f189bc6-2382-404a-ae0e-7e7d1eca7019",
+      "characteristicId": "48c39090-4544-4309-b398-ce2dd324740d",
+      "unitCode": "pcs",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "BAT_800",
+      "refKey": "2f189bc6-2382-404a-ae0e-7e7d1eca7019",
+      "characteristicId": "0f14ada2-2c9c-416e-8059-f63fbb7dab07",
+      "unitCode": "pcs",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "POWER_350",
+      "refKey": "e30b32c8-a941-403b-b8cf-e147945f752b",
+      "characteristicId": "85a7a54f-a2f7-447e-959b-95fbcaa36d77",
+      "unitCode": "set",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "POWER_500",
+      "refKey": "e30b32c8-a941-403b-b8cf-e147945f752b",
+      "characteristicId": "ca619ae7-9651-4345-ab63-8d7df7a5cefc",
+      "unitCode": "set",
+      "coefficient": "1"
+    }
+  ],
+  "testedAt": "2026-10-09",
+  "database": "https://edu.1cfresh.com/a/edu_erp_spbpu/1538260/",
+  "organizationName": "ДвижжОК ООО",
+  "setupDate": "2027-01-15T00:00:00",
+  "verifiedStock": {
+    "CityRide": 15,
+    "SportDrive": 8,
+    "TourPro": 6,
+    "CargoMax": 4
+  },
+  "verifiedMovements": {
+    "InformationRegister_ЦеныНоменклатуры25": {
+      "rows": 15
+    },
+    "InformationRegister_ЦеныНоменклатурыПоставщиков": {
+      "rows": 11
+    },
+    "AccumulationRegister_СебестоимостьТоваров": {
+      "rows": 4,
+      "totalCost": 1301800
+    }
+  },
+  "applicationVerification": {
+    "version": "1.0-35",
+    "assemblyId": "01a11f96-3eb6-7573-b883-f5e0e6024223",
+    "updateTaskId": "01a11f96-6335-7660-8004-6aed4e3aced3",
+    "updateTaskStatus": "Completed",
+    "applicationStatus": "Running",
+    "uiPreview": "passed",
+    "uiApply": "passed",
+    "passwordCleared": true
+  }
+}
