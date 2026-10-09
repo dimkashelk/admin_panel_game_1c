@@ -31,9 +31,14 @@ class NewGameTests(unittest.TestCase):
 
     def test_default_two_teams(self):
         self.create()
-        self.assertEqual(self.calls, [('Учебная игра', 'scenario', ['Альфа', 'Бета'], 42, True)])
+        self.assertEqual(self.calls, [('Учебная игра', 'scenario', ['Альфа', 'Бета'], 42, True, True)])
         self.assertEqual(self.env['СозданнаяИгра'], 'new-game')
         self.assertIn('Команд: 2', self.env['Сообщение'])
+
+    def test_can_choose_legacy_allocation_market(self):
+        self.env['СвободныйРынок'] = False
+        self.create()
+        self.assertFalse(self.calls[0][5])
 
     def test_arbitrary_team_count_keeps_names_and_order(self):
         for count in (3, 4, 20):
