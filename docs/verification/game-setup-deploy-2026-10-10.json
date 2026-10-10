@@ -1,0 +1,38 @@
+{
+  "date": "2026-10-10",
+  "build": "1.0-51",
+  "application_url": "https://app-312909758.1cmycloud.com/applications/game-dev",
+  "assembly_id": "01a12505-4a97-7864-bbed-06a266d1d460",
+  "task_id": "01a12505-b37c-7f32-afe6-5e2e32a16f8c",
+  "task_status": "Completed",
+  "completed_at": "2026-10-10T08:55:05.265Z",
+  "application_status": "Running",
+  "error": null,
+  "current_task": null,
+  "sha256": "d62c788c132ce3aa3b72e283543e7879f57d6ecb4d4e4930755dd21864080b06",
+  "backup_id": "01a12503-5da5-7883-a664-6798cb50314b",
+  "backup_status": "Ready",
+  "backup_size_bytes": 9307560,
+  "checks": [
+    "123 local tests passed with configured native Element Script 10.0 runtime",
+    "18 new setup form tests execute original handlers with fake services",
+    "120 YAML files, 114 objects, 466 unique IDs; metadata checks passed",
+    "58 XBSL files; source consistency checks passed",
+    "xbsl-validate: 0 errors, 37 out-of-scope warnings",
+    "native cloud compilation and application update completed",
+    "git diff --check"
+  ],
+  "not_verified": [
+    "Visual layout and modal context in the native browser",
+    "Creating a new user or saving real team ERP credentials through the new screen",
+    "Native DB permissions under a non-admin game leader and competing sessions"
+  ],
+  "compile_repair": {
+    "rejected_build": "1.0-50",
+    "reason": "Exported setup refresh method to project scope and bound fold state to a writable boolean property"
+  },
+  "notes": [
+    "Existing users and ERP data were not changed during verification",
+    "Source changes are local working tree changes; deployed archive is identified by SHA-256"
+  ]
+}

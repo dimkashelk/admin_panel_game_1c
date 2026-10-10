@@ -18,7 +18,14 @@ class NewGameTests(unittest.TestCase):
                 raise self.error
             return 'new-game'
 
-        self.env, _, _ = load_form('МастерНовойИгры', SimpleNamespace(СоздатьИгру=create))
+        def settings(game):
+            values = dict(name=self.env['Название'], scenario=self.env['Сценарий'],
+                seed=self.env['Seed'], demo=self.env['Демонстрационная'],
+                market=self.env['СвободныйРынок'], version=0, draft=True, status='Черновик', admin=True)
+            return SimpleNamespace(Получить=values.__getitem__)
+        self.env, _, _ = load_form('МастерНовойИгры', SimpleNamespace(
+            СоздатьИгру=create, ПолучитьНастройки=settings))
+        self.env['ДоступКабинета'] = SimpleNamespace(КомандыИгры=lambda game: xbsl.XArray())
         self.env['ПослеСоздания']()
         self.env['Сценарий'] = 'scenario'
 
@@ -44,6 +51,8 @@ class NewGameTests(unittest.TestCase):
         for count in (3, 4, 20):
             with self.subTest(count=count):
                 names = [f'Команда {index}' for index in range(1, count + 1)]
+                self.env['НоваяИгра'](None)
+                self.env['Сценарий'] = 'scenario'
                 self.teams(names)
                 self.create()
                 self.assertEqual(self.calls[-1][2], names)
@@ -102,6 +111,20 @@ class NewGameTests(unittest.TestCase):
         self.create()
         self.assertEqual(self.env['СозданнаяИгра'], 'new-game')
         self.assertEqual(self.calls[-1][2], ['Альфа', 'Бета', 'Гамма'])
+
+    def test_created_game_cannot_be_created_twice_by_repeated_click(self):
+        self.create()
+        self.create()
+        self.assertEqual(len(self.calls), 1)
+        self.assertIn('уже создана', self.env['Сообщение'])
+
+    def test_failed_settings_read_keeps_created_reference_for_retry(self):
+        self.env['УправлениеИгрой'].ПолучитьНастройки = lambda game: (_ for _ in ()).throw(ServiceError('Нет связи'))
+        self.create()
+        self.assertEqual(self.env['СозданнаяИгра'], 'new-game')
+        self.assertIsNone(self.env['ЗагруженнаяИгра'])
+        self.create()
+        self.assertEqual(len(self.calls), 1)
 
 
 if __name__ == '__main__':
