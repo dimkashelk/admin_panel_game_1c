@@ -1,0 +1,43 @@
+{
+  "date": "2026-10-10",
+  "build": "1.0-49",
+  "application_url": "https://app-312909758.1cmycloud.com/applications/game-dev",
+  "assembly_id": "01a124d4-7b02-730f-b1f5-d7213cda3c8a",
+  "task_id": "01a124d5-943a-7c35-9f41-e63331e8ceca",
+  "task_status": "Completed",
+  "completed_at": "2026-10-10T08:02:31.596Z",
+  "application_status": "Running",
+  "error": null,
+  "current_task": null,
+  "sha256": "6a3fdbb86b0b75de96bea14c0d2ad334eb791a4f3fd8c0fcbfbd231be072165b",
+  "backup_id": "01a124cf-6fa3-76e9-931c-716bd7bbbaa1",
+  "backup_status": "Ready",
+  "backup_size_bytes": 9282462,
+  "checks": [
+    "103 local tests passed, including native Element Script 10.0",
+    "native OData test extended to accept server ApplicationSecret, both native player-market tests passed",
+    "120 YAML metadata files, 0 errors",
+    "58 XBSL source bindings, 0 errors",
+    "xbsl-validate: 0 errors, 37 out-of-scope warnings",
+    "native cloud compilation",
+    "git diff --check"
+  ],
+  "browser_checks": [
+    "Existing team_1 session opens assigned Alpha team cabinet",
+    "Player cabinet contains no ERP URL/login/password controls",
+    "Player navigation contains only player cabinet"
+  ],
+  "not_verified": [
+    "Saving settings from an authenticated non-admin game leader in native UI/DB",
+    "Creating a new order in a real ERP with saved team credentials",
+    "Concurrent order claims against native DB"
+  ],
+  "configuration": [
+    "Real ERP addresses and credentials have not been populated for Alpha/Beta",
+    "Game remains in draft"
+  ],
+  "compile_repair": {
+    "rejected_build": "1.0-47",
+    "reason": "Nullable query ordering and read-only DeletionMark; fixed before successful updates"
+  }
+}

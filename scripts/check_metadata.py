@@ -32,7 +32,7 @@ UniqueKeyLoader.add_constructor(
     yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, unique_mapping
 )
 
-PRIMITIVES = {"Строка", "Число", "Булево", "Дата", "ДатаВремя", "Момент", "Ууид"}
+PRIMITIVES = {"Строка", "Число", "Булево", "Дата", "ДатаВремя", "Момент", "Ууид", "СекретПриложения"}
 SYSTEM_REFERENCES = {"Пользователи.Ссылка", "ДвоичныйОбъект.Ссылка"}
 COLLECTIONS = (
     "Реквизиты", "Измерения", "Ресурсы", "ТабличныеЧасти", "Элементы",

@@ -39,6 +39,7 @@ def load_form(name, service, subsystem='Управление'):
             parts[index] = re.sub(r'Массив<ЭлементСпискаЗначений<\w+\.Ссылка\?>>', 'XArray', parts[index])
             parts[index] = re.sub(r'ЭлементСпискаЗначений<\w+\.Ссылка\?>', 'ЭлементСпискаЗначений', parts[index])
             parts[index] = re.sub(r'<\w+\.Ссылка>\[\]', 'XArray()', parts[index])
+            parts[index] = re.sub(r'\s+как\s+(Строка|Булево)\b', '', parts[index])
         return original_expression(''.join(parts))
 
     try:
