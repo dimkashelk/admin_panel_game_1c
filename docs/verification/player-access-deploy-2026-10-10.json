@@ -1,0 +1,38 @@
+{
+  "date": "2026-10-10",
+  "application": "https://app-312909758.1cmycloud.com/applications/game-dev",
+  "build": "1.0-44",
+  "assembly_id": "01a124b5-04d3-7adf-8dc7-dccd6d23635b",
+  "task_id": "01a124b5-2492-7e26-ad80-845c3aba7f16",
+  "task_status": "Completed",
+  "application_status": "Running",
+  "error": null,
+  "current_task": null,
+  "sha256": "58ccc96098a6a233975906760d41c7459f48f50f62765254cf7e79e35970a280",
+  "backup_id": "01a124b4-c489-7918-a582-33aacfa24d00",
+  "backup_status": "Ready",
+  "backup_bytes": 9279540,
+  "local_tests": {
+    "run": 96,
+    "passed": 91,
+    "skipped": 5
+  },
+  "browser_checks": [
+    "Role defaults to player",
+    "Team choices restricted to selected game",
+    "Created game Игра команд — 10.10.2026 with Альфа and Бета",
+    "Assigned team_1 to Альфа as player",
+    "Read team_1 · Игрок · активен inside team card",
+    "Created team_2 inside Бета and read active player assignment",
+    "Admin logout shows Работа завершена and Войти",
+    "Logged in as team_1; cabinet opened automatically",
+    "Player menu contains only cabinet and logout",
+    "Team dropdown contains only Игра команд — 10.10.2026 · Альфа",
+    "Direct host-panel URL redirects to player cabinet",
+    "Player logout and repeat login succeed"
+  ],
+  "not_verified": [
+    "Independent login as team_2",
+    "Real ERP connection and market actions for the draft game"
+  ]
+}

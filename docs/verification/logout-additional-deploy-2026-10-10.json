@@ -1,0 +1,25 @@
+{
+  "date": "2026-10-10",
+  "build": "1.0-46",
+  "assembly_id": "01a124b9-e104-79a4-bd12-e81bda21125f",
+  "task_id": "01a124ba-013c-728e-8eb5-ecec7879258f",
+  "task_status": "Completed",
+  "application_status": "Running",
+  "current_task": null,
+  "error": null,
+  "sha256": "bc2a23a9e6c931a2b9ff36d8700032d9841be4df19a4eff54398242d3a97e8de",
+  "backup_id": "01a124b8-c560-7dda-a6e2-227b276e2bf5",
+  "backup_status": "Ready",
+  "browser_checks": [
+    "Player navigation contains only player cabinet",
+    "Logout command displayed in additional interface at bottom right",
+    "Clicking logout terminates team_1 session",
+    "Repeat sign-in opens player cabinet"
+  ],
+  "checks": [
+    "check_metadata.py",
+    "check_sources.py",
+    "git diff --check",
+    "native cloud compilation"
+  ]
+}
