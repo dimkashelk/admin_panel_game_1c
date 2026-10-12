@@ -2,7 +2,7 @@
 """Generate the public 1.0 contract from the normative ERP specification tables.
 
 The extracted tables are checked in, so generation does not require the Word file.
-Use --spec PATH to re-extract tables and complete protocol examples from the source.
+Use --spec PATH to re-extract tables from the source.
 """
 import argparse, json, re, zipfile
 from pathlib import Path
@@ -28,18 +28,15 @@ ROUTES = [('context','get','Context'), ('commands','get','CommandsResponse'), ('
 def extract(path):
  ns={'w':'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
  body=ET.fromstring(zipfile.ZipFile(path).read('word/document.xml')).find('w:body',ns)
- heading=''; tables={}; examples={}; in_examples=False
+ heading=''; tables={}
  for element in body:
   if element.tag.endswith('}p'):
    text=''.join(t.text or '' for t in element.findall('.//w:t',ns))
-   if text.startswith('В 12 '):in_examples=True
-   if text.startswith('В 13 '):in_examples=False
-   if in_examples and text.startswith('{'): examples[heading]=json.loads(text)
    if text:heading=text
   elif element.tag.endswith('}tbl'):
    rows=[[''.join(t.text or '' for t in c.findall('.//w:t',ns)) for c in row.findall('w:tc',ns)] for row in element.findall('w:tr',ns)]
    if rows[0][0]=='Поле':tables[heading.split()[0]]=rows[1:]
- return {'source':'ТЗ_Расширение_ERP.docx, приложение В','schemas':tables,'examples':examples}
+ return {'source':'ТЗ_Расширение_ERP.docx, приложение В','schemas':tables}
 
 def ref(name): return {'$ref':'#/components/schemas/'+name}
 def field_schema(kind, description):
