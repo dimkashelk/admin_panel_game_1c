@@ -3416,6 +3416,411 @@
           "effectiveQuantity",
           "reasonCode"
         ]
+      },
+      "ERPOrder": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "command": {
+            "$ref": "#/components/schemas/Command"
+          },
+          "erpDocumentIds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UUID"
+            }
+          }
+        },
+        "required": [
+          "command",
+          "erpDocumentIds"
+        ]
+      },
+      "ERPMapping": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "itemCode": {
+            "$ref": "#/components/schemas/Code"
+          },
+          "refKey": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "characteristicId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": ""
+              },
+              {
+                "$ref": "#/components/schemas/UUID"
+              },
+              {
+                "type": "string",
+                "const": "00000000-0000-0000-0000-000000000000"
+              }
+            ]
+          },
+          "unitCode": {
+            "$ref": "#/components/schemas/Code"
+          },
+          "coefficient": {
+            "$ref": "#/components/schemas/PositiveQuantity"
+          }
+        },
+        "required": [
+          "itemCode",
+          "refKey",
+          "characteristicId",
+          "unitCode",
+          "coefficient"
+        ]
+      },
+      "ERPContext": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "contractVersion": {
+            "type": "string",
+            "const": "1.0",
+            "description": "Версия контракта. Только 1.0."
+          },
+          "gameId": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Идентификатор текущей игры. Формат uuid."
+          },
+          "participantId": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Идентификатор команды. Формат uuid."
+          },
+          "roundNumber": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647,
+            "description": "Текущий раунд. От 0 до 2147483647."
+          },
+          "phaseCode": {
+            "type": "string",
+            "enum": [
+              "initialization",
+              "initial_sales",
+              "planning",
+              "purchasing",
+              "production",
+              "sales",
+              "analysis"
+            ],
+            "description": "Текущая фаза. Значения: initialization, initial_sales, planning, purchasing, production, sales, analysis."
+          },
+          "phaseToken": {
+            "$ref": "#/components/schemas/UUID",
+            "description": "Токен экземпляра фазы. Формат uuid."
+          },
+          "stateVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647,
+            "description": "Версия управления игрой; возрастает при переходах. От 1 до 2147483647."
+          },
+          "gameState": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "preparing",
+              "running",
+              "paused",
+              "completed",
+              "cancelled"
+            ],
+            "description": "Состояние игры. Значения: draft, preparing, running, paused, completed, cancelled."
+          },
+          "gameMonth": {
+            "$ref": "#/components/schemas/GameMonth",
+            "description": "Месяц текущего раунда."
+          },
+          "documentDate": {
+            "type": "string",
+            "format": "date",
+            "description": "Дата для текущих учебных документов. Формат date."
+          },
+          "deadline": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Реальный срок фазы; null в preparing/draft или при паузе."
+          },
+          "serverTime": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Текущее время сервера Элемента для сверки часов. Формат date-time."
+          },
+          "settingsHash": {
+            "$ref": "#/components/schemas/Hash",
+            "description": "Отпечаток GameSettings по правилу В 1."
+          },
+          "settings": {
+            "$ref": "#/components/schemas/GameSettings",
+            "description": "Полный согласованный профиль игры."
+          },
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "consistentSnapshot",
+                "phaseGuard",
+                "idempotentCommands",
+                "salesFacts",
+                "finalFinancials",
+                "automaticExecution",
+                "executionReports"
+              ]
+            },
+            "minItems": 0,
+            "maxItems": 7,
+            "uniqueItems": true,
+            "description": "Возможности API Элемента; массив уникальных кодов. 0–7 элементов. Без повторов. Элементы: consistentSnapshot, phaseGuard, idempotentCommands, salesFacts, finalFinancials, automaticExecution, executionReports."
+          },
+          "phaseState": {
+            "type": "string",
+            "enum": [
+              "open",
+              "freezing",
+              "waiting_erp",
+              "closed"
+            ]
+          }
+        },
+        "required": [
+          "contractVersion",
+          "gameId",
+          "participantId",
+          "roundNumber",
+          "phaseCode",
+          "phaseToken",
+          "stateVersion",
+          "gameState",
+          "gameMonth",
+          "documentDate",
+          "deadline",
+          "serverTime",
+          "settingsHash",
+          "settings",
+          "capabilities",
+          "phaseState"
+        ]
+      },
+      "ERPStateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "contractVersion": {
+            "type": "string",
+            "const": "1.0"
+          },
+          "context": {
+            "$ref": "#/components/schemas/ERPContext"
+          },
+          "organization": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "mappings": {
+            "type": "array",
+            "minItems": 15,
+            "maxItems": 15,
+            "items": {
+              "$ref": "#/components/schemas/ERPMapping"
+            }
+          },
+          "orders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ERPOrder"
+            }
+          },
+          "playerFinished": {
+            "type": "boolean"
+          },
+          "allocationReady": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "contractVersion",
+          "context",
+          "organization",
+          "mappings",
+          "orders",
+          "playerFinished",
+          "allocationReady"
+        ]
+      },
+      "ERPCommandRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "contractVersion": {
+            "type": "string",
+            "const": "1.0"
+          },
+          "context": {
+            "$ref": "#/components/schemas/ERPContext"
+          },
+          "organization": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "mappings": {
+            "type": "array",
+            "minItems": 15,
+            "maxItems": 15,
+            "items": {
+              "$ref": "#/components/schemas/ERPMapping"
+            }
+          },
+          "orders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ERPOrder"
+            }
+          },
+          "playerFinished": {
+            "type": "boolean"
+          },
+          "allocationReady": {
+            "type": "boolean"
+          },
+          "command": {
+            "$ref": "#/components/schemas/Command"
+          }
+        },
+        "required": [
+          "contractVersion",
+          "context",
+          "organization",
+          "mappings",
+          "orders",
+          "playerFinished",
+          "allocationReady",
+          "command"
+        ]
+      },
+      "ERPResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "contractVersion": {
+            "type": "string",
+            "const": "1.0"
+          },
+          "commandId": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "snapshot": {
+            "$ref": "#/components/schemas/SnapshotRequest"
+          },
+          "readiness": {
+            "$ref": "#/components/schemas/ReadinessRequest"
+          },
+          "receipt": {
+            "$ref": "#/components/schemas/CommandReceiptRequest"
+          },
+          "salesEvents": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "$ref": "#/components/schemas/SalesEventRequest"
+            }
+          },
+          "executionEvents": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "$ref": "#/components/schemas/ExecutionEventRequest"
+            }
+          }
+        },
+        "required": [
+          "contractVersion",
+          "salesEvents",
+          "executionEvents"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "required": [
+                "receipt"
+              ]
+            },
+            "then": {
+              "required": [
+                "commandId"
+              ]
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "commandId"
+              ]
+            },
+            "then": {
+              "required": [
+                "receipt"
+              ]
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "readiness"
+              ]
+            },
+            "then": {
+              "required": [
+                "snapshot"
+              ]
+            }
+          }
+        ]
+      },
+      "ERPAcknowledgement": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "contractVersion": {
+            "type": "string",
+            "const": "1.0"
+          },
+          "gameId": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "participantId": {
+            "$ref": "#/components/schemas/UUID"
+          },
+          "messageIds": {
+            "type": "array",
+            "maxItems": 204,
+            "items": {
+              "$ref": "#/components/schemas/UUID"
+            },
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "contractVersion",
+          "gameId",
+          "participantId",
+          "messageIds"
+        ]
       }
     }
   }

@@ -7,6 +7,7 @@ Use --spec PATH to re-extract tables from the source.
 import argparse, json, re, zipfile
 from pathlib import Path
 import xml.etree.ElementTree as ET
+from erp_pull_contract import pull_schemas, pull_openapi
 
 ROOT = Path(__file__).resolve().parents[1]
 TABLES = ROOT / 'contracts/erp-spec-tables.json'
@@ -92,6 +93,7 @@ def build(data):
  conditional(schemas['ExecutionEventRequest'],'executionKind','sales',['erpOrderId'])
  schemas['Command']['allOf']=[{'if':{'properties':{'kind':{'const':kind}},'required':['kind']},'then':{'properties':{'payload':ref(payload)}}} for kind,payload in PAYLOADS.items()]
  for field in ('allowSupplierDebt','allowCustomerDebt'):schemas['GameSettings']['properties'][field]['const']=False
+ schemas.update(pull_schemas(schemas))
  paths={}
  for tail,method,schema in ROUTES:
   parameters=[{'name':'bindingId','in':'path','required':True,'schema':ref('UUID')}, {'name':'X-Game-Contract-Version','in':'header','required':True,'schema':{'type':'string','const':'1.0'}}]
@@ -108,7 +110,7 @@ def build(data):
 
 def generate_xbsl(schemas):
  # JSON field names and schema identifiers are the explicit external-name exception.
- lines=['// Generated from ERP specification tables; regenerate with scripts/generate_game_contract.py.',
+ lines=['// Generated from ERP specification tables and erp_pull_contract.py; regenerate with scripts/generate_game_contract.py.',
         '// External English identifiers are fixed by contract 1.0.',
         '@ВПроекте', 'метод Схема(Имя: Строка): Соответствие<Строка, Объект?>']
  for name, schema in schemas.items():
@@ -124,6 +126,7 @@ def main():
  if args.spec:TABLES.write_text(json.dumps(extract(args.spec),ensure_ascii=False,indent=2)+'\n')
  contract=build(json.loads(TABLES.read_text()))
  (ROOT/'contracts/game-api.openapi.json').write_text(json.dumps(contract,ensure_ascii=False,indent=2)+'\n')
+ (ROOT/'contracts/erp-pull.openapi.json').write_text(json.dumps(pull_openapi(contract['components']['schemas']),ensure_ascii=False,indent=2)+'\n')
  generate_xbsl(contract['components']['schemas'])
  print(f"Generated {len(contract['paths'])} routes, {len(contract['components']['schemas'])} schemas (1.0)")
 if __name__=='__main__':main()
