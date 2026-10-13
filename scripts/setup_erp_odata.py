@@ -12,6 +12,7 @@ from pathlib import Path
 import urllib.error
 import urllib.parse
 import urllib.request
+import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
 ZERO = '00000000-0000-0000-0000-000000000000'
@@ -98,6 +99,34 @@ def equivalent(actual, expected):
     return actual==expected
 
 
+def read_all(client, path, params=None):
+    result = []
+    for offset in range(0, 20000, 100):
+        page = client.request(path, params={**(params or {}), '$top': 100, '$skip': offset})['value']
+        result.extend(page)
+        if len(page) < 100:
+            return result
+    raise SetupError('Слишком много строк; чтение не завершено: ' + path)
+
+
+def check_initial_area(client, profile, refs, found):
+    """Do not add marked initial documents on top of unrelated ERP balances."""
+    by_key = {node['key']: node for node in profile['nodes']}
+    at = refs['setupDate'][:10] + 'T23:59:59'
+    for key, warehouse in [('initial_stock', 'finished_goods'), ('initial_components', 'purchases')]:
+        if key not in by_key or (found.get(key) and found[key].get('Posted')):
+            continue
+        rows = read_all(client, "AccumulationRegister_ТоварыНаСкладах/Balance(Period=datetime'" + at + "')")
+        if any(r['Склад_Key'] == refs[warehouse] and
+               (r['ВНаличииBalance'] != 0 or r['КОтгрузкеBalance'] != 0) for r in rows):
+            raise SetupError('В базе уже есть начальные товары. Используйте чтение готовой базы')
+    if 'initial_cash' in by_key and not (found.get('initial_cash') and found['initial_cash'].get('Posted')):
+        for register in ['ДенежныеСредстваБезналичные', 'ДенежныеСредстваНаличные']:
+            rows = read_all(client, 'AccumulationRegister_' + register + "/Balance(Period=datetime'" + at + "')")
+            if any(r['Организация_Key'] == refs['organization'] and r['СуммаBalance'] != 0 for r in rows):
+                raise SetupError('В организации уже есть деньги. Используйте чтение готовой базы')
+
+
 def plan(client, profile, options=None):
     refs, report, schema = {**profile.get('defaults',{}), **(options or {})}, [], {}
     if 'setupDate' in refs:
@@ -121,7 +150,7 @@ def plan(client, profile, options=None):
         match=resolve(n['match'],refs)
         old=client.find(n['entity'],match)
         found[n['key']]=old
-        refs[n['key']]=old['Ref_Key'] if old else n['id']
+        refs[n['key']]=old['Ref_Key'] if old else str(uuid.uuid4())
         if old and old.get('DeletionMark'):raise SetupError(n['key']+': запись помечена на удаление')
         if not old and n['mode']=='existing':raise SetupError(n['key']+': обязательный классификатор не найден')
         # Draft and active specs are both valid at the skeleton step; the finish step verifies the complete BOM.
@@ -130,6 +159,7 @@ def plan(client, profile, options=None):
         draft_document = n['mode']=='document' and old and not old.get('Posted')
         if old and not draft_document and not equivalent(old,expected):raise SetupError(n['key']+': существующая запись отличается от профиля; исправьте конфликт')
         report.append(dict(key=n['key'],action='reuse' if old else 'create',entity=n['entity'],refKey=refs[n['key']],fields=fields))
+    check_initial_area(client, profile, refs, found)
     return refs,report
 
 
@@ -150,7 +180,7 @@ def apply(client,profile,options=None):
             else:
                 old=client.find(e['entity'],resolve(n['match'],refs))
                 if not old:
-                    old=client.request(e['entity'],'POST',{'Ref_Key':n['id'],**fields})
+                    old=client.request(e['entity'],'POST',{'Ref_Key':refs[n['key']],**fields})
                 e['refKey']=old['Ref_Key']
                 if n['mode']=='document':
                     path=e['entity']+"(guid'"+e['refKey']+"')"

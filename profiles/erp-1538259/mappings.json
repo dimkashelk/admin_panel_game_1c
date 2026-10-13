@@ -1,0 +1,109 @@
+{
+  "items": [
+    {
+      "itemCode": "CityRide",
+      "refKey": "8f9a25e5-c2f6-11f1-b003-7cc2553c1b47",
+      "characteristicId": "",
+      "unitCode": "pcs",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "SportDrive",
+      "refKey": "0769be13-c2f7-11f1-b003-7cc2553c1b47",
+      "characteristicId": "",
+      "unitCode": "pcs",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "CargoMax",
+      "refKey": "1629eee4-c2f7-11f1-b003-7cc2553c1b47",
+      "characteristicId": "",
+      "unitCode": "pcs",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "TourPro",
+      "refKey": "e82478ab-c2f6-11f1-b003-7cc2553c1b47",
+      "characteristicId": "",
+      "unitCode": "pcs",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "FRAME_STD",
+      "refKey": "0ef7bec9-c2f6-11f1-b003-7cc2553c1b47",
+      "characteristicId": "",
+      "unitCode": "pcs",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "FRAME_CARGO",
+      "refKey": "1c9def1c-c2f6-11f1-b003-7cc2553c1b47",
+      "characteristicId": "",
+      "unitCode": "pcs",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "POWER_350",
+      "refKey": "f57a7404-c2f5-11f1-b003-7cc2553c1b47",
+      "characteristicId": "",
+      "unitCode": "pcs",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "POWER_500",
+      "refKey": "028db1c5-c2f6-11f1-b003-7cc2553c1b47",
+      "characteristicId": "",
+      "unitCode": "pcs",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "BAT_300",
+      "refKey": "2a6f19e0-c2ee-11f1-b003-7cc2553c1b47",
+      "characteristicId": "",
+      "unitCode": "pcs",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "BAT_500",
+      "refKey": "575b14bf-c2f2-11f1-b003-7cc2553c1b47",
+      "characteristicId": "",
+      "unitCode": "pcs",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "BAT_800",
+      "refKey": "628da9b1-c2f2-11f1-b003-7cc2553c1b47",
+      "characteristicId": "",
+      "unitCode": "pcs",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "WHEELS_STD",
+      "refKey": "55ae80f2-c2f6-11f1-b003-7cc2553c1b47",
+      "characteristicId": "",
+      "unitCode": "pcs",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "WHEELS_HEAVY",
+      "refKey": "633cc394-c2f6-11f1-b003-7cc2553c1b47",
+      "characteristicId": "",
+      "unitCode": "pcs",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "EQUIP_BASE",
+      "refKey": "693a73e7-c2f6-11f1-b003-7cc2553c1b47",
+      "characteristicId": "",
+      "unitCode": "pcs",
+      "coefficient": "1"
+    },
+    {
+      "itemCode": "EQUIP_PLUS",
+      "refKey": "756eaed8-c2f6-11f1-b003-7cc2553c1b47",
+      "characteristicId": "",
+      "unitCode": "pcs",
+      "coefficient": "1"
+    }
+  ]
+}

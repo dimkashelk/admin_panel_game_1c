@@ -11,19 +11,9 @@ import json
 import os
 from pathlib import Path
 
-from setup_erp_odata import OData, ROOT, ZERO, SetupError, resolve
+from setup_erp_odata import OData, ROOT, ZERO, SetupError, resolve, read_all
 
 PRODUCTS = ('CityRide', 'SportDrive', 'CargoMax', 'TourPro')
-
-
-def read_all(client, path, params=None):
-    result = []
-    for offset in range(0, 20000, 100):
-        page = client.request(path, params={**(params or {}), '$top': 100, '$skip': offset})['value']
-        result.extend(page)
-        if len(page) < 100:
-            return result
-    raise SetupError('Слишком много строк; чтение не завершено: ' + path)
 
 
 def latest_price(record_sets, item_id, price_type, currency, at):
@@ -69,8 +59,8 @@ def snapshot(client, at, organization_name):
     datetime.strptime(at, '%Y-%m-%dT%H:%M:%S')
     profile = json.loads((ROOT / 'contracts/erp-odata-setup.json').read_text())
     refs = {**profile['defaults'], 'organizationName': organization_name}
-    needed = {'organization', 'finished_goods', 'agreement_customer', 'customer',
-              'counterparty_customer', 'rub', 'pcs', 'set', 'battery', 'power'}
+    needed = {'organization', 'finished_goods', 'purchases', 'workshop',
+              'sales_price', 'cost_products', 'cost_components', 'rub', 'pcs'}
     needed.update(i['refKey'][1:] for i in profile['items'])
     needed.update(i['characteristicId'][1:] for i in profile['items'] if i['characteristicId'])
     records = {}
@@ -82,19 +72,11 @@ def snapshot(client, at, organization_name):
             raise SetupError('Не найдена активная настройка ERP: ' + node['key'])
         refs[node['key']] = row['Ref_Key']
         records[node['key']] = row
-    agreement = records['agreement_customer']
-    for key, field in [('organization', 'Организация_Key'), ('customer', 'Партнер_Key'),
-                       ('counterparty_customer', 'Контрагент_Key'), ('finished_goods', 'Склад_Key'),
-                       ('rub', 'Валюта_Key')]:
-        if agreement[field] != refs[key]:
-            raise SetupError('Соглашение ERP не соответствует выбранной области: ' + field)
-    if agreement['Статус'] != 'Действует':
-        raise SetupError('Соглашение покупателя не действует')
-    price_type = client.read('Catalog_ВидыЦен', agreement['ВидЦен_Key'])
+    price_type = records['sales_price']
     if price_type.get('DeletionMark') or price_type['Статус'] != 'Действует':
         raise SetupError('Вид продажной цены ERP не действует')
-    if price_type['ЦенаВключаетНДС'] != agreement['ЦенаВключаетНДС']:
-        raise SetupError('Настройки НДС вида цены и соглашения различаются')
+    if price_type['ВалютаЦены_Key'] != refs['rub']:
+        raise SetupError('Продажный вид цены должен быть в рублях')
     mappings = resolve(profile['items'], refs)
     prices = read_all(client, 'InformationRegister_ЦеныНоменклатуры25')
     stock = read_all(client, "AccumulationRegister_ТоварыНаСкладах/Balance(Period=datetime'" + at + "')")
@@ -104,17 +86,53 @@ def snapshot(client, at, organization_name):
         item = records[code]
         if item['ЕдиницаИзмерения_Key'] != refs['pcs']:
             raise SetupError('Единица велосипедов отличается от шт.: ' + code)
-        price, period = latest_price(prices, item['Ref_Key'], agreement['ВидЦен_Key'], agreement['Валюта_Key'], at)
-        physical, shipping, available = available_stock(stock, item['Ref_Key'], agreement['Склад_Key'], commitments)
+        price, period = latest_price(prices, item['Ref_Key'], refs['sales_price'], refs['rub'], at)
+        physical, shipping, available = available_stock(stock, item['Ref_Key'], refs['finished_goods'], commitments)
         offers.append(dict(productCode=code, refKey=item['Ref_Key'], description=item['Description'],
                            price=format(price, '.2f'), pricePeriod=period, physicalQuantity=str(physical),
                            shippingQuantity=str(shipping), availableQuantity=available, unitCode='pcs'))
+    balances = []
+    vat_rates = []
+    for mapping in mappings:
+        code, item_id = mapping['itemCode'], mapping['refKey']
+        item = records[code]
+        if item['ЕдиницаИзмерения_Key'] != refs['pcs']:
+            raise SetupError('Единица ERP отличается от шт.: ' + code)
+        cost_key = 'cost_products' if code in PRODUCTS else 'cost_components'
+        cost, _ = latest_price(prices, item_id, refs[cost_key], refs['rub'], at)
+        if code in PRODUCTS:
+            rate = client.read('Catalog_СтавкиНДС', item['СтавкаНДС_Key'])
+            if rate.get('DeletionMark'):
+                raise SetupError('Ставка НДС помечена на удаление: ' + code)
+            vat_rates.append(dict(productCode=code, vatRate=format(Decimal(str(rate['Ставка'])), '.2f')))
+        for warehouse in (('finished_goods',) if code in PRODUCTS else ('purchases', 'workshop')):
+            physical, shipping, available = available_stock(stock, item_id, refs[warehouse], commitments)
+            if shipping:
+                raise SetupError('Начальные остатки содержат резервы: ' + code)
+            balances.append(dict(itemCode=code, warehouseId=warehouse,
+                                 unitCode='set' if code.startswith(('POWER_', 'WHEELS_', 'EQUIP_')) else 'pcs',
+                                 quantity=str(available), unitCost=format(cost, '.2f')))
+    cash = Decimal(0)
+    for register, catalog, dimension in [
+            ('ДенежныеСредстваБезналичные', 'БанковскиеСчетаОрганизаций', 'БанковскийСчет_Key'),
+            ('ДенежныеСредстваНаличные', 'Кассы', 'Касса_Key')]:
+        for row in read_all(client, "AccumulationRegister_" + register + "/Balance(Period=datetime'" + at + "')"):
+            if row['Организация_Key'] != refs['organization']:
+                continue
+            account = client.read('Catalog_' + catalog, row[dimension])
+            if account.get('DeletionMark') or account['ВалютаДенежныхСредств_Key'] != refs['rub']:
+                raise SetupError('Начальные деньги должны быть на активном рублёвом счёте/кассе')
+            cash += Decimal(str(row['СуммаBalance']))
+    if cash < 0:
+        raise SetupError('Начальные деньги не могут быть отрицательными')
+    prepare = dict(initialCash=format(cash, '.2f'), currency='RUB', balances=balances,
+                   initialPrices=[dict(productCode=r['productCode'], price=r['price']) for r in offers], seed='fixed')
     return dict(database=client.url.removesuffix('odata/standard.odata/'), asOf=at,
-                organizationName=organization_name, warehouseId=agreement['Склад_Key'],
-                warehouseName=records['finished_goods']['Description'], priceTypeId=agreement['ВидЦен_Key'],
-                priceTypeName=price_type['Description'], agreementId=agreement['Ref_Key'],
-                customerId=agreement['Партнер_Key'], customerName=records['customer']['Description'],
-                priceIncludesVAT=agreement['ЦенаВключаетНДС'], offers=offers, mappings={'items': mappings})
+                organizationName=organization_name, warehouseId=refs['finished_goods'],
+                warehouseName=records['finished_goods']['Description'], priceTypeId=refs['sales_price'],
+                priceTypeName=price_type['Description'],
+                priceIncludesVAT=price_type['ЦенаВключаетНДС'], offers=offers, mappings={'items': mappings},
+                prepare=prepare, vatRates=vat_rates)
 
 
 def main():
