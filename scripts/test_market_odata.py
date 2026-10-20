@@ -33,6 +33,7 @@ DRIVER = r'''
     ТребоватьПроверку(ПричинаОжидания(Ложь, Неопределено, "Orders pending", Истина) == "Orders pending", "Lost order reason")
     знч ОстаткиРынка = ПрочитатьОстаткиРынкаOData(АдресТеста, "test-user", "test-password", "ДвижжОК ООО", "2026-10-15")
     знч ВсеОстатки = МассивJson(ОстаткиРынка.Получить("offers"))
+    ТребоватьПроверку(КаноническийJson(ОстаткиРынка).Длина() <= 1000, "Market stock cache exceeds metadata string limit")
     ТребоватьПроверку(ВсеОстатки.Размер() == 4 и ОбъектJson(ВсеОстатки[0]).Получить("availableQuantity") == 15,
         "Stock reader did not return four product offers")
     знч Строки = <Объект?>[{"productCode": "CityRide", "quantity": 2, "unitPrice": "39000.00"}]
@@ -321,6 +322,7 @@ GENERATION_DRIVER = r'''
         ТребоватьПроверку(Заказ.Количество == 3 и Заказ.Цена >= 35000 и Заказ.Цена <= 75000,
             "Published order ignored configured quantity/price bounds")
         ТребоватьПроверку(Заказ.ОснованиеЦены != "" и Заказ.ХешОснованияЦены == Хеш(Заказ.ОснованиеЦены), "Published price has no reproducible input hash")
+        ТребоватьПроверку(Заказ.ОснованиеЦены.Длина() <= 1000, "Price basis exceeds metadata string limit")
     ;
     знч ДоПовтора = Игра.Заказы.Размер()
     ОбновитьГенерацию(Игра)
