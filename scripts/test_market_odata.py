@@ -19,12 +19,14 @@ from test_erp_pull import EXCHANGE, ROOT, method, uid
 from test_erp_setup import ERP, PROFILE
 from setup_erp_odata import apply
 from test_round_timeout import timeout_source
+from test_market_stock import stock_source
 
 DRIVER = r'''
 метод Скрипт(АдресТеста: Строка): Число
     ПроверитьПереходыРынка()
     ПроверитьДинамическийРынок()
     ПроверитьПубликациюЗаказов()
+    ПроверитьНедоступныеОстатки()
     ПроверитьФоновоеПоявление()
     ПроверитьСравнениеКабинета()
     ПроверитьЗакреплениеЗаказа()
@@ -334,7 +336,7 @@ GENERATION_DRIVER = r'''
     ;
     Игра.ДанныеГотовы = Ложь
     ОбновитьГенерацию(Игра)
-    ТребоватьПроверку(Игра.Заказы.Пусто() и Игра.НомерПакетаЗаказов == 0, "Missing stock data published market orders")
+    ТребоватьПроверку(Игра.Заказы.Пусто(), "Missing stock data published market orders")
     Игра.ДанныеГотовы = Истина
     Игра.МаксимумОднойКоманды = 2
     ОбновитьГенерацию(Игра)
@@ -374,9 +376,11 @@ GENERATION_DRIVER = r'''
     ТребоватьПроверку(Игра.Заказы.Размер() == ПослеЗаполнения, "Expired phase published new orders")
     Консоль.Записать("PASS: original generation method with in-memory persistence, shared queue caps, configured batches, repeated reads, pause/deadline guards")
 ;
-метод ПредложениеГенерации(Игра: ИграГенерации): Соответствие<Строка, Объект?>?
+метод ПредложениеГенерации(Игра: ИграГенерации): Соответствие<Строка, Объект?>
     если не Игра.ДанныеГотовы
-        возврат Неопределено
+        возврат {"quantities": <Строка, Объект?>{"CityRide": 0, "SportDrive": 0, "CargoMax": 0, "TourPro": 0},
+            "maximumQuantities": <Строка, Объект?>{"CityRide": 0, "SportDrive": 0, "CargoMax": 0, "TourPro": 0},
+            "sourcesHash": "unavailable-stock"}
     ;
     возврат {"quantities": <Строка, Объект?>{"CityRide": 10, "SportDrive": 10, "CargoMax": 10, "TourPro": 10},
         "maximumQuantities": <Строка, Объект?>{"CityRide": Игра.МаксимумОднойКоманды, "SportDrive": Игра.МаксимумОднойКоманды,
@@ -635,7 +639,7 @@ def main():
                       method(summary, 'КомандаГотова'), method(summary, 'ПричинаОжидания'), lifecycle_source(),
                       *(method(market, name) for name in ('ДинамическаяЦена', 'РазмерНовогоЗаказа', 'ВыбратьМодельПакета', 'ПараметрыПакета')),
                       method(checks, 'СтабильныйПриоритет'), method(checks, 'ПроверитьПараметрыЗаказов'),
-                      reservation_source(), generation_source(), background_source(), cabinet_source(), timeout_source(),
+                      reservation_source(), generation_source(), background_source(), cabinet_source(), timeout_source(), stock_source(),
                       MARKET_DRIVER, GENERATION_DRIVER, driver])
     body = re.sub(r'^импорт .+\n|^@[^\n]+\n', '', body, flags=re.M)
     body = body.replace('ПротоколERP.', '').replace('КонтрактERP.', '')
