@@ -45,6 +45,9 @@ def fixtures():
     def case(name, value, valid, schema='ERPResponse'):
         cases.append(dict(name=name, value=copy.deepcopy(value), valid=valid, schema=schema))
 
+    initial = json.loads((ROOT / 'contracts/erp-odata-setup.json').read_text())['initial']
+    case('default opening data still fits game creation contract', {**initial, 'settingsHash': 'a' * 64},
+         True, 'PrepareGamePayload')
     case('empty state', empty, True)
     case('frozen snapshot plus receipt', frozen, True)
     bad = copy.deepcopy(frozen); del bad['commandId']

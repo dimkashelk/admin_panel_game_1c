@@ -125,6 +125,37 @@ def check_initial_area(client, profile, refs, found):
             rows = read_all(client, 'AccumulationRegister_' + register + "/Balance(Period=datetime'" + at + "')")
             if any(r['Организация_Key'] == refs['organization'] and r['СуммаBalance'] != 0 for r in rows):
                 raise SetupError('В организации уже есть деньги. Используйте чтение готовой базы')
+    if 'initial_supplier_debt' in by_key and not (found.get('initial_supplier_debt') and found['initial_supplier_debt'].get('Posted')):
+        objects = {r['Ref_Key'] for r in read_all(client, 'Catalog_ОбъектыРасчетов')
+                   if r.get('Организация_Key') == refs['organization']}
+        for register in ['РасчетыСПоставщиками', 'РасчетыСКлиентами']:
+            rows = read_all(client, 'AccumulationRegister_' + register + "/Balance(Period=datetime'" + at + "')")
+            if any(r['ОбъектРасчетов_Key'] in objects and r['СуммаBalance'] != 0 for r in rows):
+                raise SetupError('В организации уже есть взаиморасчёты. Используйте чтение готовой базы')
+
+
+def verify_supplier_debt(client, profile, refs):
+    if 'initial_supplier_debt' not in refs:
+        return {}
+    source = client.read('Document_ПервичныйДокумент', refs['initial_debt_source'])
+    key = source.get('ОбъектРасчетов_Key')
+    if not key or key == ZERO:
+        raise SetupError('ERP не сформировала объект расчётов начального долга')
+    at = refs['setupDate'][:10] + 'T23:59:59'
+    rows = read_all(client, "AccumulationRegister_РасчетыСПоставщиками/Balance(Period=datetime'" + at + "')")
+    amount = -sum(r['СуммаBalance'] for r in rows if r['ОбъектРасчетов_Key'] == key and r['Валюта_Key'] == refs['rub'])
+    expected = float(profile['verification']['supplierDebt'])
+    if amount != expected:
+        raise SetupError(f'Начальный долг поставщику не прошёл сверку: {amount}; ожидается {expected}')
+    return {'supplierDebt': format(amount, '.2f')}
+
+
+def export_refs(node, row, refs):
+    for name, field in node.get('exports', {}).items():
+        value = row.get(field) if row else None
+        if not value or value == ZERO:
+            raise SetupError(node['key'] + ': не заполнен обязательный реквизит ' + field)
+        refs[name] = value
 
 
 def plan(client, profile, options=None):
@@ -132,6 +163,7 @@ def plan(client, profile, options=None):
     if 'setupDate' in refs:
         try: datetime.strptime(refs['setupDate'],'%Y-%m-%dT%H:%M:%S')
         except ValueError:raise SetupError('Дата настройки: ожидается YYYY-MM-DDTHH:MM:SS') from None
+        refs['specStartDate'] = refs['setupDate'][:4] + '-01-01T00:00:00'
     found={}
     for n in profile['nodes']:
         fields = resolve(n['fields'],refs)
@@ -151,6 +183,7 @@ def plan(client, profile, options=None):
         old=client.find(n['entity'],match)
         found[n['key']]=old
         refs[n['key']]=old['Ref_Key'] if old else str(uuid.uuid4())
+        export_refs(n, old, refs)
         if old and old.get('DeletionMark'):raise SetupError(n['key']+': запись помечена на удаление')
         if not old and n['mode']=='existing':raise SetupError(n['key']+': обязательный классификатор не найден')
         # Draft and active specs are both valid at the skeleton step; the finish step verifies the complete BOM.
@@ -195,10 +228,14 @@ def apply(client,profile,options=None):
                 if not equivalent(client.read(e['entity'],e['refKey']),expected):
                     raise SetupError('записанные поля отличаются от задания')
             refs[n['key']]=e['refKey']
+            if n.get('exports'):
+                export_refs(n, client.read(e['entity'], e['refKey']), refs)
             completed.append({k:v for k,v in e.items() if k!='fields'})
         except SetupError as exc:
             raise SetupError(f'Остановлено на {e["key"]}; завершено {len(completed)} шагов. {exc}. Повтор продолжит проверку сохранённых записей.') from None
-    return dict(profile=profile['profileId'],entries=completed,items=resolve(profile['items'],refs))
+    return dict(profile=profile['profileId'],entries=completed,items=resolve(profile['items'],refs),
+                verification=verify_supplier_debt(client, profile, refs),
+                fullSetupReady=not profile.get('manualSteps'), manualSteps=profile.get('manualSteps', []))
 
 
 def main():
@@ -214,7 +251,8 @@ def main():
         if args.apply:result=apply(client,profile,options)
         else:
             refs,entries=plan(client,profile,options)
-            result=dict(profile=profile['profileId'],dryRun=True,entries=entries,items=resolve(profile['items'],refs))
+            result=dict(profile=profile['profileId'],dryRun=True,entries=entries,items=resolve(profile['items'],refs),
+                        fullSetupReady=False, manualSteps=profile.get('manualSteps', []))
         args.output.write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
         print('Сохранён отчёт:',args.output, 'Шагов:',len(result['entries']))
     except SetupError as exc:

@@ -20,19 +20,29 @@ class ERP:
         self.posts = []
         self.fail_after_post = None
         self.foreign_cash = 0
+        self.foreign_debt = 0
+        self.hide_debt = False
         refs = PROFILE['defaults'].copy()
         for node in PROFILE['nodes']:
             if node['mode'] == 'existing':
                 row = self.add(node['entity'], resolve(node['fields'], refs))
                 if node['key'] == 'vat':
                     row['Ставка'] = 22
+                if node['key'] == 'bank_account':
+                    row['Банк_Key'] = str(uuid.uuid4())
                 refs[node['key']] = row['Ref_Key']
         self.organization = refs['organization']
         self.bank = refs['bank_account']
 
     def add(self, entity, fields):
         row = {**copy.deepcopy(fields), 'Ref_Key': str(uuid.uuid4()), 'DeletionMark': False}
+        if entity.startswith('Document_'):
+            row.setdefault('Posted', False)
+            row.setdefault('Number', 'TEST-' + row['Ref_Key'][:8])
         self.rows.setdefault(entity, []).append(row)
+        if entity == 'Document_ПервичныйДокумент':
+            obj = self.add('Catalog_ОбъектыРасчетов', {'Организация_Key': fields['Организация_Key']})
+            row['ОбъектРасчетов_Key'] = obj['Ref_Key']
         return row
 
     def find(self, entity, match):
@@ -47,6 +57,19 @@ class ERP:
     def request(self, path, method='GET', body=None, params=None):
         entity = path.split('(')[0].split('/')[0]
         if '/Balance(' in path:
+            if entity == 'AccumulationRegister_РасчетыСПоставщиками':
+                values = []
+                if not self.hide_debt:
+                    for doc in self.rows.get('Document_ВводОстатков', []):
+                        if doc.get('Posted'):
+                            for r in doc['РасчетыСПартнерами']:
+                                source = self.read('Document_ПервичныйДокумент', r['ОбъектРасчетов'])
+                                values.append(dict(ОбъектРасчетов_Key=source['ОбъектРасчетов_Key'],
+                                                   Валюта_Key=doc['Валюта_Key'], СуммаBalance=-r['Сумма']))
+                if self.foreign_debt:
+                    obj = self.rows['Catalog_ОбъектыРасчетов'][0]
+                    values.append(dict(ОбъектРасчетов_Key=obj['Ref_Key'], СуммаBalance=-self.foreign_debt))
+                return {'value': values}
             if entity == 'AccumulationRegister_ТоварыНаСкладах':
                 values = []
                 for doc in self.rows.get('Document_ВводОстатковТоваров', []):
@@ -115,17 +138,78 @@ class SetupTests(unittest.TestCase):
             self.assertTrue(doc['Posted'])
             self.assertTrue(all(r['Номенклатура_Key'] in valid_ids for r in doc['Товары']))
         for spec in erp.rows['Catalog_РесурсныеСпецификации']:
-            self.assertTrue(all(r['Номенклатура_Key'] in valid_ids for r in spec['МатериалыИУслуги']))
+            if not spec.get('IsFolder'):
+                self.assertTrue(all(r['Номенклатура_Key'] in valid_ids for r in spec['МатериалыИУслуги']))
 
     def test_retries_do_not_repeat_stock_or_money_postings(self):
         erp = ERP()
         erp.fail_after_post = 'Document_ВводОстатковДенежныхСредств'
         with self.assertRaises(SetupError):
             apply(erp, PROFILE)
-        committed_posts = len(erp.posts)
+        committed_posts = [r for r in erp.posts if r[0] == 'Document_ВводОстатковДенежныхСредств']
         apply(erp, PROFILE)
-        self.assertEqual(len(erp.posts), committed_posts)
+        self.assertEqual([r for r in erp.posts if r[0] == 'Document_ВводОстатковДенежныхСредств'], committed_posts)
+        all_posts = len(erp.posts)
+        apply(erp, PROFILE)
+        self.assertEqual(len(erp.posts), all_posts)
         self.assertEqual(len(erp.rows['Document_ВводОстатковДенежныхСредств']), 1)
+
+    def test_supplier_debt_is_verified_and_lost_post_response_is_safe(self):
+        erp = ERP()
+        erp.fail_after_post = 'Document_ВводОстатков'
+        with self.assertRaises(SetupError):
+            apply(erp, PROFILE)
+        count = len(erp.posts)
+        result = apply(erp, PROFILE)
+        self.assertEqual(len(erp.posts), count)
+        self.assertEqual(result['verification']['supplierDebt'], '2801800.00')
+        self.assertEqual(len(erp.rows['Document_ВводОстатков']), 1)
+
+    def test_missing_debt_movements_cannot_report_success(self):
+        erp = ERP()
+        erp.hide_debt = True
+        with self.assertRaisesRegex(SetupError, 'долг поставщику не прошёл сверку'):
+            apply(erp, PROFILE)
+
+    def test_foreign_settlements_block_before_first_write(self):
+        erp = ERP()
+        erp.add('Catalog_ОбъектыРасчетов', {'Организация_Key': erp.organization})
+        erp.foreign_debt = 1
+        with self.assertRaisesRegex(SetupError, 'уже есть взаиморасчёты'):
+            apply(erp, PROFILE)
+        self.assertEqual(erp.posts, [])
+
+    def test_bank_and_phone_references_belong_to_target_erp(self):
+        erp = ERP()
+        apply(erp, PROFILE)
+        account = erp.rows['Catalog_БанковскиеСчетаКонтрагентов'][0]
+        self.assertEqual(account['Банк_Key'], erp.rows['Catalog_БанковскиеСчетаОрганизаций'][0]['Банк_Key'])
+        supplier = next(r for r in erp.rows['Catalog_Контрагенты'] if r['Description'] == 'Единый поставщик')
+        self.assertEqual(supplier['ИНН'], '7078125417')
+        self.assertEqual(supplier['КонтактнаяИнформация'][0]['Вид_Key'], erp.rows['Catalog_ВидыКонтактнойИнформации'][0]['Ref_Key'])
+
+    def test_missing_bank_blocks_before_any_write(self):
+        erp = ERP()
+        erp.rows['Catalog_БанковскиеСчетаОрганизаций'][0]['Банк_Key'] = ZERO
+        with self.assertRaisesRegex(SetupError, 'Банк_Key'):
+            apply(erp, PROFILE)
+        self.assertEqual(erp.posts, [])
+
+    def test_specifications_start_on_january_first_of_selected_year(self):
+        erp = ERP()
+        apply(erp, PROFILE, {'setupDate': '2028-05-15T00:00:00'})
+        for spec in erp.rows['Catalog_РесурсныеСпецификации']:
+            if not spec.get('IsFolder'):
+                self.assertEqual(spec['НачалоДействия'], '2028-01-01T00:00:00')
+
+    def test_changed_posted_opening_debt_is_a_conflict(self):
+        erp = ERP()
+        apply(erp, PROFILE)
+        erp.rows['Document_ВводОстатков'][0]['РасчетыСПартнерами'][0]['Сумма'] = 1
+        count = len(erp.posts)
+        with self.assertRaisesRegex(SetupError, 'существующая запись отличается'):
+            apply(erp, PROFILE)
+        self.assertEqual(len(erp.posts), count)
 
     def test_new_bases_have_distinct_real_ids(self):
         first = apply(ERP(), PROFILE)['items']
