@@ -24,6 +24,11 @@ from test_market_order_status import status_source, add_status_fixtures
 
 DRIVER = r'''
 метод Скрипт(АдресТеста: Строка): Число
+    знч ПерваяКоманда = новый Ууид("11111111-2222-4333-8444-555555555555")
+    знч ВтораяКоманда = новый Ууид("99999999-2222-4333-8444-555555555555")
+    ТребоватьПроверку(КлючФоновогоЗадания(ПерваяКоманда).Длина() <= 60
+        и КлючФоновогоЗадания(ПерваяКоманда) != КлючФоновогоЗадания(ВтораяКоманда),
+        "Background team key exceeds platform length limit or mixes teams")
     ПроверитьПереходыРынка()
     ПроверитьДинамическийРынок()
     ПроверитьПубликациюЗаказов()
@@ -706,7 +711,7 @@ def main():
     market = (EXCHANGE / 'РынокЗаказов.xbsl').read_text()
     checks = (EXCHANGE.parent / 'Данные/ПроверкиДанных.xbsl').read_text()
     protocol = (EXCHANGE / 'ПротоколERP.xbsl').read_text().split('@ВПроекте\nметод УникальныеПоля', 1)[0]
-    body = '\n'.join([protocol, (EXCHANGE / 'КонтрактERP.xbsl').read_text(),
+    body = '\n'.join([protocol, method((EXCHANGE / 'КлиентERP.xbsl').read_text(), 'КлючФоновогоЗадания'), (EXCHANGE / 'КонтрактERP.xbsl').read_text(),
                       method((EXCHANGE / 'ПрофильНастройкиOData.xbsl').read_text(), 'Получить').replace('метод Получить(', 'метод ПолучитьПрофиль('),
                       *(method(odata, name) for name in ('СоздатьЗаказПоСтрокамOData', 'ПроверитьСтрокиЗаказаERP',
                         'ТоварыЗаказаERP', 'Найти', 'Разрешить', 'Совпадает', 'ПровестиДокумент',
@@ -750,6 +755,9 @@ def main():
         def do_POST(self):
             self.handle_request()
 
+        def do_PATCH(self):
+            self.handle_request()
+
         def handle_request(self):
             nonlocal failed_post
             parts = urlsplit(self.path)
@@ -789,6 +797,11 @@ def main():
                     legacy.update(Комментарий='BICYCLE_PLAYER/' + ids['legacy'], Posted=True,
                                   ЦенаВключаетНДС=False, НалогообложениеНДС='ПродажаНеОблагаетсяНДС')
                     legacy['Товары'][0]['СуммаНДС'] = 0
+                if document['Комментарий'].endswith(ids['recover']):
+                    # Old draft created before the ERP-required header fields were filled.
+                    document['ДатаОтгрузки'] = '0001-01-01T00:00:00'
+                    document['Согласован'] = False
+                    document['СкидкиРассчитаны'] = False
                 erp.posts.append((entity, document['Ref_Key'], 'Create'))
                 if document['Комментарий'].endswith(ids['lost']):
                     self.respond({}, 503)  # Document committed; response unavailable.
