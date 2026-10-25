@@ -20,6 +20,7 @@ from test_erp_setup import ERP, PROFILE
 from setup_erp_odata import apply
 from test_round_timeout import timeout_source
 from test_market_stock import stock_source
+from test_market_access import access_source
 from test_market_order_status import status_source, add_status_fixtures
 
 DRIVER = r'''
@@ -38,6 +39,7 @@ DRIVER = r'''
     ПроверитьСравнениеКабинета()
     ПроверитьЗакреплениеЗаказа()
     ПроверитьАвтозавершение()
+    ПроверитьДоступЗавершенногоКабинета()
     ПроверитьСтатусыЗаказов(АдресТеста)
     // Полный режим продолжает требовать снимок; рынок использует готовность заказов.
     ТребоватьПроверку(не КомандаГотова(Истина, Неопределено, ""), "Full game accepted no snapshot")
@@ -719,7 +721,7 @@ def main():
                       method(summary, 'КомандаГотова'), method(summary, 'ПричинаОжидания'), lifecycle_source(),
                       *(method(market, name) for name in ('ДинамическаяЦена', 'РазмерНовогоЗаказа', 'ВыбратьМодельПакета', 'ПараметрыПакета')),
                       method(checks, 'СтабильныйПриоритет'), method(checks, 'ПроверитьПараметрыЗаказов'),
-                      reservation_source(), generation_source(), background_source(), cabinet_source(), timeout_source(), stock_source(), status_source(),
+                      reservation_source(), generation_source(), background_source(), cabinet_source(), timeout_source(), stock_source(), status_source(), access_source(),
                       MARKET_DRIVER, GENERATION_DRIVER, driver])
     body = re.sub(r'^импорт .+\n|^@[^\n]+\n', '', body, flags=re.M)
     body = body.replace('ПротоколERP.', '').replace('КонтрактERP.', '')
@@ -854,6 +856,7 @@ def main():
         assert sum(event[1:] == (docs[0]['Ref_Key'], 'Post') for event in erp.posts) == 1, name
         assert docs[0]['СуммаДокумента'] == 78000
         assert docs[0]['ДатаОтгрузки'] == docs[0]['Date']
+        assert docs[0]['Статус'] == 'КОбеспечению'
         assert docs[0]['ЦенаВключаетНДС'] is True
         assert docs[0]['НалогообложениеНДС'] == 'ПродажаОблагаетсяНДС'
         assert docs[0]['Товары'][0]['СуммаНДС'] == 14065.57
