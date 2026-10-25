@@ -66,8 +66,8 @@ DRIVER = r'''
         для Пара из ОбъектJson(Нули.Получить("quantities"))
             ТребоватьПроверку(Пара.Значение == 0, "Unavailable stock is nonzero")
         ;
-        ТребоватьПроверку(СостояниеОстатковТеста(Игра).Содержит("Нет подтверждённых"),
-            "Player sees no explanation for empty market")
+        ТребоватьПроверку(СостояниеОстатковТеста(Игра).Содержит("Заказы появляются по спросу даже без товара"),
+            "Player status incorrectly implies missing stock blocks demand")
     ;
     знч ПрежнийХеш = СтрокаJson(ПредложениеОстатковТеста(Игра), "sourcesHash")
     Недоступная.ТокенРынкаOData = "phase"

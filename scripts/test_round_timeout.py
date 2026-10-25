@@ -9,6 +9,7 @@ def timeout_source():
     body = method(source, 'ЗавершитьПоСроку')
     body = body.replace('Игры.Объект', 'ИграГенерации').replace('Игра.Ссылка', 'Игра')
     body = body.replace('Момент.Сейчас()', 'Игра.Время')
+    body = body.replace('    ФиксироватьИтогиРаунда(Игра)\n', '')
     body, count = re.subn(r'Запрос\{ВЫБРАТЬ Ссылка ИЗ УчастникиИгры.*?\}\.Выполнить\(\)',
                           'АктивныеКомандыЗавершения(Игра)', body, flags=re.S)
     assert count == 1, 'Timeout team query seam changed'

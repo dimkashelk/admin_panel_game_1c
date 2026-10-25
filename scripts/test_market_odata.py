@@ -20,17 +20,20 @@ from test_erp_setup import ERP, PROFILE
 from setup_erp_odata import apply
 from test_round_timeout import timeout_source
 from test_market_stock import stock_source
+from test_market_order_status import status_source, add_status_fixtures
 
 DRIVER = r'''
 метод Скрипт(АдресТеста: Строка): Число
     ПроверитьПереходыРынка()
     ПроверитьДинамическийРынок()
     ПроверитьПубликациюЗаказов()
+    ПроверитьНулевыеОстаткиИИнтервалы()
     ПроверитьНедоступныеОстатки()
     ПроверитьФоновоеПоявление()
     ПроверитьСравнениеКабинета()
     ПроверитьЗакреплениеЗаказа()
     ПроверитьАвтозавершение()
+    ПроверитьСтатусыЗаказов(АдресТеста)
     // Полный режим продолжает требовать снимок; рынок использует готовность заказов.
     ТребоватьПроверку(не КомандаГотова(Истина, Неопределено, ""), "Full game accepted no snapshot")
     ТребоватьПроверку(КомандаГотова(Истина, Неопределено, "", Истина), "Market still requires snapshot")
@@ -64,8 +67,10 @@ DRIVER = r'''
     ОжидатьОтказ(АдресТеста, "%CONFLICT%", Строки, "ODATA_CONFLICT")
     ОжидатьОтказ(АдресТеста, "%DELETED%", Строки, "ODATA_DELETED")
     знч СлишкомМного = <Объект?>[{"productCode": "CityRide", "quantity": 999, "unitPrice": "39000.00"}]
-    ОжидатьОтказ(АдресТеста, "%STOCK%", СлишкомМного, "ODATA_STOCK")
-    Консоль.Записать("PASS: market readiness, OData create/post, retries, conflicts, deleted documents and stock checks")
+    знч БезТовара = СоздатьЗаказПоСтрокамOData(АдресТеста, "test-user", "test-password", "ДвижжОК ООО",
+        "%STOCK%", СлишкомМного, "2026-10-15")
+    ТребоватьПроверку(БезТовара.Получить("posted") == Истина, "Order for future production was blocked by stock")
+    Консоль.Записать("PASS: market readiness, OData create/post, retries, conflicts, deleted documents and future-production orders")
     возврат 0
 ;
 метод ТребоватьПроверку(Условие: Булево, Текст: Строка)
@@ -166,6 +171,7 @@ def lifecycle_source():
     body = body.replace('Игра.ТекущийРаунд!.ЗагрузитьОбъект(Истина)!', 'Игра.ТекущийРаунд!')
     body = body.replace('    Раунд.Записать()\n', '')
     body = body.replace('РынокЗаказов.ПроверитьЗавершение(', 'ПроверитьЗавершениеТеста(')
+    body = body.replace('    РынокЗаказов.ФиксироватьИтогиРаунда(Игра)\n', '')
     body = body.replace('ОбменERP.ОткрытьУчастникам(', 'ОткрытьУчастникамТеста(')
     body = body.replace('СоздатьРаунд(', 'СоздатьРаундТеста(').replace('СохранитьПереход(', 'СохранитьПереходТеста(')
     for key, value in {'ФазыИгры.Подготовка': 'preparation', 'ФазыИгры.СтартоваяПродажа': 'initial_sales',
@@ -190,10 +196,10 @@ MARKET_DRIVER = r'''
     ТребоватьПроверку(ДинамическаяЦена(52000, 1, 1000000, 2, 120, 30) == 104000, "Inverse elasticity formula is wrong")
     ТребоватьПроверку(ДинамическаяЦена(52000, 35000, 75000, 0.001, 120, 1) == 75000, "Low elasticity overflowed price bounds")
     ТребоватьПроверку(ДинамическаяЦена(52000, 35000, 75000, 0, 120, 30) == 52000, "Zero elasticity has no defined reference fallback")
-    ТребоватьПроверку(РазмерНовогоЗаказа(1000, 5000, 0, 5) == 5, "Market published entire demand as one order")
-    ТребоватьПроверку(РазмерНовогоЗаказа(10, 4, 3, 5) == 1 и РазмерНовогоЗаказа(10, 4, 4, 5) == 0,
-        "Queue exceeds available supply")
-    ТребоватьПроверку(РазмерНовогоЗаказа(3, 100, 2, 5) == 1, "Queue exceeds remaining demand")
+    ТребоватьПроверку(РазмерНовогоЗаказа(1000, 0, 5) == 5, "Market published entire demand as one order")
+    ТребоватьПроверку(РазмерНовогоЗаказа(10, 3, 5) == 5 и РазмерНовогоЗаказа(10, 10, 5) == 0,
+        "Queue exceeds remaining demand")
+    ТребоватьПроверку(РазмерНовогоЗаказа(3, 2, 5) == 1, "Queue exceeds remaining demand")
     ТребоватьПроверку(ВыбратьМодельПакета([0, 0, 0, 0], 17, 1, 1) == -1, "Selected exhausted market")
     пер Номер = 1
     пока Номер <= 100
@@ -240,7 +246,7 @@ MARKET_DRIVER = r'''
     ПодтвердитьТеста(ПерваяКоманда, Заказ, ПерваяПопытка, Неопределено, "old response", Истина)
     ТребоватьПроверку(Заказ.Попытка == НоваяПопытка и Заказ.Статус == "Отправляется", "Stale response overwrote new attempt")
     ПодтвердитьТеста(ПерваяКоманда, Заказ, НоваяПопытка,
-        <Строка, Объект?>{"posted": Истина, "refKey": "erp-id", "number": "ERP-1"}, "")
+        <Строка, Объект?>{"posted": Истина, "refKey": "erp-id", "number": "ERP-1", "date": "2026-10-15T00:00:00", "erpStatus": "КОтгрузке"}, "")
     ТребоватьПроверку(Заказ.Статус == "Проведен в ERP" и РезервироватьТеста(ПерваяКоманда, Заказ, "phase") == "",
         "Confirmed order can be sent again")
     знч ДругойЗаказ = новый ЗаказРезерва(Игра = Игра)
@@ -256,7 +262,7 @@ MARKET_DRIVER = r'''
     знч ПоздняяПопытка = РезервироватьТеста(ДругаяКоманда, ДругойЗаказ, "phase")
     ТребоватьПроверку(ПоздняяПопытка != ПовторнаяПопытка, "Completed team cannot retry its pending order")
     ПодтвердитьТеста(ДругаяКоманда, ДругойЗаказ, ПоздняяПопытка,
-        <Строка, Объект?>{"posted": Истина, "refKey": "late-erp-id", "number": "ERP-2"}, "")
+        <Строка, Объект?>{"posted": Истина, "refKey": "late-erp-id", "number": "ERP-2", "date": "2026-10-15T00:00:00", "erpStatus": "КОтгрузке"}, "")
     ТребоватьПроверку(ДругойЗаказ.Статус == "Проведен в ERP", "Late retry was not confirmed")
     для Открыт из [Ложь, Истина]
         Игра.РынокОткрыт = Открыт
@@ -305,6 +311,13 @@ MARKET_DRIVER = r'''
     пер Попытка: Строка = ""
     пер Ошибка: Строка = ""
     пер ВнешнийДокумент: Строка = ""
+    пер СтатусERP: Строка = ""
+    пер ЗакрытERP: Булево = Ложь
+    пер ЗачтенЗакрытым: Булево = Ложь
+    пер ВремяФиксацииИтога: Момент?
+    пер ДатаERP: Строка = ""
+    пер ВремяПроверкиERP: Момент?
+    пер ОшибкаПроверкиERP: Строка = ""
     пер НомерERP: Строка = ""
 ;
 '''
@@ -332,19 +345,22 @@ GENERATION_DRIVER = r'''
     Игра.ТекущийРаунд = новый РаундГенерации(НомерРаунда = 1)
     Игра.СледующийЗаказ = Момент.Сейчас() - 120с
     для Код из ["CityRide", "SportDrive", "CargoMax", "TourPro"]
-        Игра.ПараметрыРынка.Добавить(новый ПравилоГенерации(Продукт = новый ПродуктГенерации(Код = Код)))
+        Игра.ПараметрыРынка.Добавить(новый ПравилоГенерации(БазовыйСпрос = 10, Продукт = новый ПродуктГенерации(Код = Код)))
     ;
     Игра.ДанныеГотовы = Ложь
     ОбновитьГенерацию(Игра)
-    ТребоватьПроверку(Игра.Заказы.Пусто(), "Missing stock data published market orders")
+    ТребоватьПроверку(Игра.Заказы.Размер() == 1 и Игра.Заказы[0].Цена == 75000,
+        "Zero or missing stock blocked demand or did not use maximum price")
     Игра.ДанныеГотовы = Истина
     Игра.МаксимумОднойКоманды = 2
+    Игра.СледующийЗаказ = Игра.Время - 1с
     ОбновитьГенерацию(Игра)
-    ТребоватьПроверку(Игра.Заказы.Пусто(), "Order cannot be fulfilled by any single team")
+    ТребоватьПроверку(Игра.Заказы.Размер() == 2 и Игра.Заказы[1].Количество == 3,
+        "Single team stock incorrectly capped market demand")
     Игра.МаксимумОднойКоманды = 10
     Игра.СледующийЗаказ = Момент.Сейчас() - 1с
     ОбновитьГенерацию(Игра)
-    ТребоватьПроверку(Игра.Заказы.Размер() == 1, "Worker delay flooded market instead of publishing one small order")
+    ТребоватьПроверку(Игра.Заказы.Размер() == 3, "Worker delay flooded market instead of publishing one small order")
     для Заказ из Игра.Заказы
         ТребоватьПроверку(Заказ.Количество == 3 и Заказ.Цена >= 35000 и Заказ.Цена <= 75000,
             "Published order ignored configured quantity/price bounds")
@@ -362,9 +378,14 @@ GENERATION_DRIVER = r'''
         Шаг = Шаг + 1
     ;
     знч ПослеЗаполнения = Игра.Заказы.Размер()
+    ТребоватьПроверку(ПослеЗаполнения == 12, "Market did not fill demand to minimum batch boundary")
+    Игра.Заказы[0].Получен = Истина
+    Игра.СледующийЗаказ = Игра.Время - 1с
+    ОбновитьГенерацию(Игра)
+    ТребоватьПроверку(Игра.Заказы.Размер() == ПослеЗаполнения, "Claiming an order recreated covered demand")
     для Правило из Игра.ПараметрыРынка
         ТребоватьПроверку(ПосчитатьЗаказыГенерации(Игра, Правило.Продукт!, Ложь).Количество <= 10,
-            "Shared queue exceeds available stock")
+            "Shared queue exceeds demand")
     ;
     Игра.СледующийЗаказ = Момент.Сейчас() - 10с
     Игра.Статус = "paused"
@@ -374,7 +395,38 @@ GENERATION_DRIVER = r'''
     Игра.Дедлайн = Момент.Сейчас() - 1с
     ОбновитьГенерацию(Игра)
     ТребоватьПроверку(Игра.Заказы.Размер() == ПослеЗаполнения, "Expired phase published new orders")
-    Консоль.Записать("PASS: original generation method with in-memory persistence, shared queue caps, configured batches, repeated reads, pause/deadline guards")
+    Консоль.Записать("PASS: original generation method with in-memory persistence, demand caps independent of stock, configured batches, repeated reads, pause/deadline guards")
+;
+метод ПроверитьНулевыеОстаткиИИнтервалы()
+    для Фаза из ["initial_sales", "sales"]
+        знч Игра = новый ИграГенерации(Фаза = Фаза, ДанныеГотовы = Ложь, МаксимумОднойКоманды = 0,
+            МинКоличествоЗаказа = 1, МаксКоличествоЗаказа = 5, МинИнтервалЗаказов = 2, МаксИнтервалЗаказов = 5,
+            ТекущийРаунд = новый РаундГенерации(НомерРаунда = 0))
+        для Код из ["CityRide", "SportDrive", "CargoMax", "TourPro"]
+            Игра.ПараметрыРынка.Добавить(новый ПравилоГенерации(Продукт = новый ПродуктГенерации(Код = Код)))
+        ;
+        Игра.Время = Момент.Сейчас()
+        знч Начало = Игра.Время
+        Игра.СледующийЗаказ = Начало + 2с
+        пер Секунд = 0
+        пер ПредыдущееПоявление = Начало
+        пока Секунд <= 120
+            знч Было = Игра.Заказы.Размер()
+            ОбновитьГенерацию(Игра)
+            если Игра.Заказы.Размер() > Было
+                знч Заказ = Игра.Заказы[Было]
+                знч Интервал = (Заказ.ВремяПоявления! - ПредыдущееПоявление).ВСекундах()
+                ТребоватьПроверку(Интервал >= 2 и Интервал <= 5 и Заказ.Количество >= 1
+                    и Заказ.Количество <= 5 и Заказ.Цена == 75000,
+                    "Zero-stock order ignored 2-5 second intervals, batch sizes or maximum price")
+                ПредыдущееПоявление = Заказ.ВремяПоявления!
+            ;
+            Игра.Время = Игра.Время + 1с
+            Секунд = Секунд + 1
+        ;
+        ТребоватьПроверку(Игра.Заказы.Размер() >= 24, "Zero stock left market empty after two minutes: " + Фаза)
+    ;
+    Консоль.Записать("PASS: initial and regular sales publish orders with zero/missing stock for 120 seconds at configured 2-5 second intervals")
 ;
 метод ПредложениеГенерации(Игра: ИграГенерации): Соответствие<Строка, Объект?>
     если не Игра.ДанныеГотовы
@@ -405,6 +457,7 @@ GENERATION_DRIVER = r'''
     пер Заявления: Массив<ЗаявлениеТеста> = []
     пер ПометкаУдаления: Булево = Ложь
     пер ТолькоРынок: Булево = Истина
+    пер ЧтенийСтатусов: Число = 0
     пер ЧтенийОстатков: Число = 0
     пер ВызововHttp: Число = 0
     пер МаксимумОднойКоманды: Число = 10
@@ -525,6 +578,9 @@ BACKGROUND_DRIVER = r'''
     ;
     Консоль.Записать("PASS: original background worker publishes >=2 orders in 180 seconds in OData-only and full modes; pause and inactive-team guards")
 ;
+метод ПрочитатьСтатусыФона(Игра: ИграГенерации, Команда: КомандаФона)
+    Игра.ЧтенийСтатусов = Игра.ЧтенийСтатусов + 1
+;
 метод ПрочитатьОстаткиФона(Игра: ИграГенерации, Команда: КомандаФона)
     Игра.ЧтенийОстатков = Игра.ЧтенийОстатков + 1
     Игра.ДанныеГотовы = Истина
@@ -553,6 +609,7 @@ def background_source():
     body = body.replace('знч Игра = СсылкаИгры', 'знч Игра: ИграГенерации? = СсылкаИгры').replace('знч Команда = Участник', 'знч Команда: КомандаФона? = Участник')
     for original, replacement in {
         'РынокЗаказов.ПродажиОткрыты': 'ПродажиГенерации',
+        'РынокЗаказов.СинхронизироватьСтатусыERP': 'ПрочитатьСтатусыФона',
         'РынокЗаказов.СинхронизироватьРынокФоном': 'ПрочитатьОстаткиФона',
         'РынокЗаказов.Обновить': 'ОбновитьГенерацию',
         'ЕстьРаботаФоном': 'ЕстьРаботаФона',
@@ -584,12 +641,19 @@ def cabinet_source():
         structure.append(';')
         body += '\n' + '\n'.join(structure)
     # Execute the real filter/selection methods against view state and verify source identity.
-    for name in ('ПрименитьФильтр', 'ОбновитьВыбор'):
+    for name in ('ПрименитьФильтр', 'ОбновитьВыбор', 'ПересчитатьПоказатели'):
         operation = method(cabinet, name).replace(f'метод {name}()', f'метод {name}Теста(Кабинет: КабинетТеста)')
-        operation = re.sub(r'\b(ВсеЗаказы|Рынок|Фильтр|ВыбранныйЗаказ)\b', r'Кабинет.\1', operation)
+        operation = re.sub(r'\b(ВсеЗаказы|Рынок|Фильтр|ВыбранныйЗаказ|Свободных|МоихЗаказов|МояСумма|ЗакрытыхЗаказов|НезакрытыхЗаказов|ЗакрытаяСумма|НезакрытаяСумма)\b', r'Кабинет.\1', operation)
         body += '\n' + operation
     body += r'''
 структура КабинетТеста
+    пер Свободных: Число = 0
+    пер МоихЗаказов: Число = 0
+    пер МояСумма: Число = 0
+    пер ЗакрытыхЗаказов: Число = 0
+    пер НезакрытыхЗаказов: Число = 0
+    пер ЗакрытаяСумма: Число = 0
+    пер НезакрытаяСумма: Число = 0
     пер ВсеЗаказы: Массив<СтрокаРынкаИгрока> = []
     пер Рынок: Массив<СтрокаРынкаИгрока> = []
     пер Фильтр: Строка = "Мои"
@@ -613,6 +677,15 @@ def cabinet_source():
         '    Кабинет.ВсеЗаказы = []',
         '    ОбновитьВыборТеста(Кабинет)',
         '    ТребоватьПроверку(Кабинет.ВыбранныйЗаказ == Неопределено, "Removed order remained selected")',
+        '    Кабинет.ВсеЗаказы = [новый СтрокаРынкаИгрока(Мой = Истина, Сумма = 100, Закрыт = Истина), новый СтрокаРынкаИгрока(Мой = Истина, Сумма = 200), новый СтрокаРынкаИгрока(Мой = Ложь, Сумма = 999, Закрыт = Истина), новый СтрокаРынкаИгрока(Свободен = Истина)]',
+        '    ПересчитатьПоказателиТеста(Кабинет)',
+        '    ТребоватьПроверку(Кабинет.МоихЗаказов == 2 и Кабинет.МояСумма == 300 и Кабинет.ЗакрытыхЗаказов == 1 и Кабинет.НезакрытыхЗаказов == 1 и Кабинет.ЗакрытаяСумма == 100 и Кабинет.НезакрытаяСумма == 200 и Кабинет.Свободных == 1, "Portfolio mixed closed, open, other-team or free orders")',
+        '    Кабинет.Фильтр = "Закрытые"',
+        '    ПрименитьФильтрТеста(Кабинет)',
+        '    ТребоватьПроверку(Кабинет.Рынок.Размер() == 1 и Кабинет.Рынок[0].Сумма == 100, "Closed filter includes another team or open orders")',
+        '    Кабинет.Фильтр = "Незакрытые"',
+        '    ПрименитьФильтрТеста(Кабинет)',
+        '    ТребоватьПроверку(Кабинет.Рынок.Размер() == 1 и Кабинет.Рынок[0].Сумма == 200, "Open filter includes another team or closed orders")',
         '    Консоль.Записать("PASS: cabinet preserves list source identity and selection; filters and changed orders update correctly")', ';']
     return body + '\n' + '\n'.join(tests)
 
@@ -639,7 +712,7 @@ def main():
                       method(summary, 'КомандаГотова'), method(summary, 'ПричинаОжидания'), lifecycle_source(),
                       *(method(market, name) for name in ('ДинамическаяЦена', 'РазмерНовогоЗаказа', 'ВыбратьМодельПакета', 'ПараметрыПакета')),
                       method(checks, 'СтабильныйПриоритет'), method(checks, 'ПроверитьПараметрыЗаказов'),
-                      reservation_source(), generation_source(), background_source(), cabinet_source(), timeout_source(), stock_source(),
+                      reservation_source(), generation_source(), background_source(), cabinet_source(), timeout_source(), stock_source(), status_source(),
                       MARKET_DRIVER, GENERATION_DRIVER, driver])
     body = re.sub(r'^импорт .+\n|^@[^\n]+\n', '', body, flags=re.M)
     body = body.replace('ПротоколERP.', '').replace('КонтрактERP.', '')
@@ -650,6 +723,7 @@ def main():
     body = body.replace('        Требовать(Значение >=', '        ТребоватьПроверку(Значение >=').replace('    Требовать(Макс', '    ТребоватьПроверку(Макс')
     erp = ERP()
     apply(erp, PROFILE)
+    add_status_fixtures(erp)
     erp.posts = []
     requests = []
     failed_post = False
@@ -693,6 +767,9 @@ def main():
                 marker = re.search(r"substringof\('((?:''|[^'])*)',Комментарий\)", condition)
                 if marker:
                     rows = [r for r in rows if marker[1].replace("''", "'") in r.get('Комментарий', '')]
+                elif entity == 'Document_ЗаказКлиента' and 'Ref_Key eq guid' in condition:
+                    keys = re.findall(r"Ref_Key eq guid'([^']+)'", condition)
+                    rows = [r for r in rows if r['Ref_Key'] in keys]
                 else:
                     for key, val in re.findall(r"([\w]+) eq (?:guid)?'((?:''|[^'])*)'", condition):
                         rows = [r for r in rows if r.get(key) == val.replace("''", "'")]
@@ -750,8 +827,10 @@ def main():
         server.shutdown()
         server.server_close()
         thread.join(timeout=2)
-    documents = erp.rows['Document_ЗаказКлиента']
-    assert len(documents) == 6, 'Retry created a duplicate or stock failure created a document'
+    documents = [d for d in erp.rows['Document_ЗаказКлиента'] if not d.get("StatusTest")]
+    assert len(documents) == 7, 'Retry created a duplicate or future-production order is missing'
+    future = next(d for d in documents if d['Комментарий'].endswith(ids['stock']))
+    assert future['Posted'] and future['Товары'][0]['ВариантОбеспечения'] == 'Обеспечивать'
     for name in ('first', 'recover', 'lost'):
         docs = [d for d in documents if d['Комментарий'] == 'BICYCLE_PLAYER/' + ids[name]]
         assert len(docs) == 1 and docs[0]['Posted'], name
@@ -766,7 +845,7 @@ def main():
     assert not any(event[1] == legacy['Ref_Key'] for event in erp.posts), 'Legacy order was changed or posted again'
     assert not any(d.get('Posted') for d in documents if d['Комментарий'].endswith((ids['conflict'], ids['deleted'])))
     assert all(path.startswith(('Catalog_', 'Document_', 'AccumulationRegister_')) for _, path, _, _ in requests)
-    print(f'PASS: {len(requests)} OData requests; 3 conducted orders, no retry duplicates or HTTP-extension calls')
+    print(f'PASS: {len(requests)} OData requests; 4 conducted orders including future production, no retry duplicates or HTTP-extension calls')
 
 
 if __name__ == '__main__':
