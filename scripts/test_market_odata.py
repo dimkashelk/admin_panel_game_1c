@@ -798,6 +798,8 @@ def main():
             if self.command == 'POST' and path.endswith('/Post()'):
                 key = path.split("(guid'", 1)[1].split("'", 1)[0]
                 document = erp.read(entity, key)
+                assert document.get('ДатаОтгрузки') == document['Date'], 'ERP requires header shipment date'
+                assert document.get('Согласован') is True and document.get('СкидкиРассчитаны') is True
                 if document['Комментарий'].endswith(ids['recover']) and not failed_post:
                     failed_post = True
                     self.respond({}, 503)
@@ -838,6 +840,7 @@ def main():
         assert len(docs) == 1 and docs[0]['Posted'], name
         assert sum(event[1:] == (docs[0]['Ref_Key'], 'Post') for event in erp.posts) == 1, name
         assert docs[0]['СуммаДокумента'] == 78000
+        assert docs[0]['ДатаОтгрузки'] == docs[0]['Date']
         assert docs[0]['ЦенаВключаетНДС'] is True
         assert docs[0]['НалогообложениеНДС'] == 'ПродажаОблагаетсяНДС'
         assert docs[0]['Товары'][0]['СуммаНДС'] == 14065.57
