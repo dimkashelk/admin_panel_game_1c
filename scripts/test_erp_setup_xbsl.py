@@ -28,7 +28,7 @@ def setup_source():
     odata = (EXCHANGE / 'НастройкаБазOData.xbsl').read_text()
     names = ('Подготовить', 'ПроверитьЧистуюБазу', 'ПроверитьЧистыеРасчеты',
              'ПроверитьНачальныйДолг', 'ЭкспортироватьСсылки', 'НормализоватьАдрес',
-             'ЗапросOData', 'Найти', 'Разрешить', 'Совпадает', 'СоединитьСтроки',
+             'ЗапросOData', 'Найти', 'МожноДополнитьНастройку', 'Разрешить', 'Совпадает', 'СоединитьСтроки',
              'ПрочитатьВсе', 'ПровестиДокумент')
     profile = method((EXCHANGE / 'ПрофильНастройкиOData.xbsl').read_text(), 'Получить')
     profile = profile.replace('метод Получить(', 'метод ПолучитьПрофиль(')
@@ -53,6 +53,9 @@ DRIVER = r'''
     Требовать(Отчет.Содержит("2801800.00") и Отчет.Содержит("18%"), "TEST", "Setup report hides debt or remaining work")
     знч Третий = Прочитать(Подготовить(Адрес, "test-user", "test-password", Истина))
     Требовать(Третий.Получить("success") == Истина, "TEST", Json(Третий))
+    знч ПроверкаГотовой = Прочитать(Подготовить(Адрес, "test-user", "test-password", Ложь))
+    Требовать(ПроверкаГотовой.Получить("success") == Истина и ПроверкаГотовой.Получить("requiresChanges") == Ложь,
+        "TEST", "Ready ERP still requires changes: " + Json(ПроверкаГотовой))
     Консоль.Записать("PASS: original XBSL setup, lost posting response, repeat without duplicate stock/cash/debt, register verification")
     возврат 0
 ;
@@ -65,6 +68,8 @@ def main():
     parser.add_argument('--java', default='java')
     args = parser.parse_args()
     erp = ERP()
+    erp.add('Catalog_Номенклатура', {'Description': 'Городской велосипед', 'Артикул': '',
+        'ВидНоменклатуры_Key': '00000000-0000-0000-0000-000000000000'})
     erp.fail_after_post = 'Document_ВводОстатков'
     requests = []
 

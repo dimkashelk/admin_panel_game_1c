@@ -26,12 +26,35 @@ from test_player_completion import completion_source
 from test_market_order_status import status_source, add_status_fixtures
 
 DRIVER = r'''
+метод ПроверитьПоискНастроекERP(Адрес: Строка)
+    знч Соединение = КлиентHttp.СБазовымUrl(Адрес).САутентификацией(новый АутентификацияHttp("test-user", "test-password"))
+    знч Товар = Найти(Соединение, "Catalog_Номенклатура", {"Description": "Городской велосипед", "DeletionMark": Ложь})!
+    знч Ид = СтрокаJson(Товар, "Ref_Key")
+    знч Узел = <Строка, Объект?>{"key": "CityRide", "entity": "Catalog_Номенклатура",
+        "match": <Строка, Объект?>{"Description": "Другое имя после переименования"}}
+    знч ПоГуид = НайтиНастройкуДляОбмена(Соединение, Узел, <Строка, Строка>{:}, <Строка, Строка>{"CityRide": Ид})!
+    ТребоватьПроверку(ПоГуид.Получить("Ref_Key") == Ид, "Saved GUID ignored because label differs")
+    знч ПоАртикулу = НайтиНастройкуДляОбмена(Соединение, Узел, <Строка, Строка>{:}, <Строка, Строка>{:})!
+    ТребоватьПроверку(ПоАртикулу.Получить("Ref_Key") == Ид, "Stable GAME article ignored")
+    для ИдОшибки из ["bad-id", "00000000-0000-4000-8000-000000000123", "00000000-0000-4000-8000-000000000124"]
+        пер Отклонено = Ложь
+        попытка
+            НайтиНастройкуДляОбмена(Соединение, Узел, <Строка, Строка>{:}, <Строка, Строка>{"CityRide": ИдОшибки})
+        поймать ОшибкаНастройки: Ошибка
+            Отклонено = Истина
+        ;
+        ТребоватьПроверку(Отклонено, "Invalid/deleted saved mapping silently replaced with another item")
+    ;
+    Консоль.Записать("PASS: ERP mappings use saved GUID and GAME article across renamed labels; invalid/missing/deleted mappings rejected")
+;
+
 метод Скрипт(АдресТеста: Строка): Число
     знч ПерваяКоманда = новый Ууид("11111111-2222-4333-8444-555555555555")
     знч ВтораяКоманда = новый Ууид("99999999-2222-4333-8444-555555555555")
     ТребоватьПроверку(КлючФоновогоЗадания(ПерваяКоманда).Длина() <= 60
         и КлючФоновогоЗадания(ПерваяКоманда) != КлючФоновогоЗадания(ВтораяКоманда),
         "Background team key exceeds platform length limit or mixes teams")
+    ПроверитьПоискНастроекERP(АдресТеста)
     знч Прайс = ПрочитатьПрайсЛистOData(АдресТеста, "test-user", "test-password", "ДвижжОК ООО", "2026-10-15T23:59:59", Истина)
     ТребоватьПроверку(МассивJson(Прайс.Получить("offers")).Размер() == 4, "ERP price list did not contain all four models")
     ТребоватьПроверку(Json(Прайс).Длина() <= 1000, "Price snapshot exceeds Element string field limit")
@@ -63,6 +86,7 @@ DRIVER = r'''
     ПроверитьСравнениеКабинета()
     ПроверитьЗакреплениеЗаказа()
     ПроверитьАвтозавершение()
+    ПроверитьПринудительноеЗавершение()
     ПроверитьДоступЗавершенногоКабинета()
     ПроверитьСтатусыЗаказов(АдресТеста)
     // Полный режим продолжает требовать снимок; рынок использует готовность заказов.
@@ -510,6 +534,9 @@ GENERATION_DRIVER = r'''
     Игра.Заказы.Добавить(Заказ)
 ;
 структура ИграГенерации
+    пер ВерсияСостояния: Число = 0
+    пер ДоступВедущего: Булево = Истина
+    пер СобытиеЗавершения: Строка = ""
     пер ПроцентСпроса: Число = 80
     пер ЗаказыПоЦенамERP: Булево = Ложь
     пер Время: Момент
@@ -781,7 +808,7 @@ def main():
                       method((EXCHANGE / 'ПрофильНастройкиOData.xbsl').read_text(), 'Получить').replace('метод Получить(', 'метод ПолучитьПрофиль('),
                       method((EXCHANGE / 'ПротоколERP.xbsl').read_text(), 'Деньги'),
                       *(method(odata, name) for name in ('СоздатьЗаказПоСтрокамOData', 'ПроверитьСтрокиЗаказаERP',
-                        'ТоварыЗаказаERP', 'Найти', 'Разрешить', 'Совпадает', 'ПровестиДокумент',
+                        'ТоварыЗаказаERP', 'НайтиНастройкуДляОбмена', 'Найти', 'Разрешить', 'Совпадает', 'ПровестиДокумент',
                         'ЗапросOData', 'ПрочитатьВсе', 'ОстатокПродукта', 'СоединитьСтроки', 'ПрочитатьОстаткиРынкаOData', 'ПрочитатьПрайсЛистOData', 'ПоследняяЦена')),
                       method(summary, 'КомандаГотова'), method(summary, 'ПричинаОжидания'), lifecycle_source(),
                       *(method(market, name) for name in ('ДинамическаяЦена', 'РазмерНовогоЗаказа', 'ВыбратьМодельПакета', 'ПараметрыПакета')),
@@ -811,6 +838,9 @@ def main():
     # A newer unposted document must not hide the active 65000 price.
     erp.add('Document_УстановкаЦенНоменклатуры', {
         'Date': '2026-10-26T11:00:00', 'Posted': False, 'Товары2_5': [{**sport, 'Цена': 55000}]})
+    dead = copy.deepcopy(erp.rows['Catalog_Номенклатура'][0])
+    dead.update(Ref_Key='00000000-0000-4000-8000-000000000124', Description='Deleted model', Артикул='DELETED', DeletionMark=True)
+    erp.rows['Catalog_Номенклатура'].append(dead)
     add_status_fixtures(erp)
     erp.posts = []
     requests = []
@@ -858,6 +888,8 @@ def main():
             if self.command == 'GET' and '(guid' not in path and '/Balance(' not in path:
                 rows = copy.deepcopy(erp.rows.get(entity, []))
                 condition = params.get('$filter', '')
+                for key, val in re.findall(r'(\w+) eq (true|false)', condition):
+                    rows = [r for r in rows if r.get(key, False) is (val == 'true')]
                 marker = re.search(r"substringof\('((?:''|[^'])*)',Комментарий\)", condition)
                 if marker:
                     rows = [r for r in rows if marker[1].replace("''", "'") in r.get('Комментарий', '')]
