@@ -22,6 +22,7 @@ def stock_source():
     assert count == 1, 'Stock reservation query seam changed'
     body = body.replace('Участник.Ид.ВСтроку()', 'Участник.Код')
     body = body.replace('ПродажиОткрыты(Игра)', 'Игра.ПродажиОткрыты')
+    body = body.replace('ФазыИгры.Ценообразование', '"pricing"')
     return body + DRIVER
 
 
@@ -96,6 +97,8 @@ DRIVER = r'''
     возврат Результат
 ;
 структура ИграОстатковТеста
+    пер ЗаказыПоЦенамERP: Булево = Ложь
+    пер Фаза: Строка = "sales"
     пер Время: Момент
     пер ТекущийРаунд: Строка = "round"
     пер ТокенФазы: Строка = "phase"

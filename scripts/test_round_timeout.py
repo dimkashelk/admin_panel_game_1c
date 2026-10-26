@@ -22,6 +22,7 @@ def timeout_source():
     body = body.replace('новый ЗаявленияКоманд.НаборЗаписей()', 'новый НаборЗавершенияТеста(Игра = Игра)')
     body = re.sub(r'^        Записи\.Фильтр\.Установить\(.+\)\n', '', body, flags=re.M)
     body = body.replace('СостоянияИгры.Идет', '"running"').replace('СостоянияФазы.Открыта', '"open"')
+    body = body.replace('ФазыИгры.СтартоваяПродажа', '"initial_sales"').replace('ФазыИгры.Продажи', '"sales"')
     return body + scheduler_source() + DRIVER
 
 

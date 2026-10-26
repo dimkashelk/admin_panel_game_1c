@@ -19,6 +19,7 @@ from test_erp_pull import EXCHANGE, ROOT, method, uid
 from test_erp_setup import ERP, PROFILE
 from setup_erp_odata import apply
 from test_round_timeout import timeout_source
+from test_price_order_lifecycle import price_collection_source, price_phase_source
 from test_market_stock import stock_source
 from test_market_access import access_source
 from test_market_order_status import status_source, add_status_fixtures
@@ -30,6 +31,12 @@ DRIVER = r'''
     ТребоватьПроверку(КлючФоновогоЗадания(ПерваяКоманда).Длина() <= 60
         и КлючФоновогоЗадания(ПерваяКоманда) != КлючФоновогоЗадания(ВтораяКоманда),
         "Background team key exceeds platform length limit or mixes teams")
+    знч Прайс = ПрочитатьПрайсЛистOData(АдресТеста, "test-user", "test-password", "ДвижжОК ООО", "2026-10-15T23:59:59", Истина)
+    ТребоватьПроверку(МассивJson(Прайс.Получить("offers")).Размер() == 4, "ERP price list did not contain all four models")
+    знч ТолькоЦены = ПрочитатьПрайсЛистOData(АдресТеста, "test-user", "test-password", "ДвижжОК ООО", "2026-10-15T23:59:59", Ложь)
+    ТребоватьПроверку(ОбъектJson(МассивJson(ТолькоЦены.Получить("offers"))[0]).Получить("availableQuantity") == 0, "Price-only read depends on stocks")
+    ПроверитьСборЦен()
+    ПроверитьЦеновыеФазы()
     ПроверитьПереходыРынка()
     ПроверитьДинамическийРынок()
     ПроверитьПубликациюЗаказов()
@@ -77,6 +84,11 @@ DRIVER = r'''
     знч БезТовара = СоздатьЗаказПоСтрокамOData(АдресТеста, "test-user", "test-password", "ДвижжОК ООО",
         "%STOCK%", СлишкомМного, "2026-10-15")
     ТребоватьПроверку(БезТовара.Получить("posted") == Истина, "Order for future production was blocked by stock")
+    знч Составной = <Объект?>[{"productCode": "CityRide", "quantity": 2, "unitPrice": "39000.00"},
+        {"productCode": "SportDrive", "quantity": 1, "unitPrice": "82000.00"}]
+    знч Новый = СоздатьЗаказПоСтрокамOData(АдресТеста, "test-user", "test-password", "ДвижжОК ООО", "%MULTI%", Составной, "2026-10-15")
+    знч ЕщеРаз = СоздатьЗаказПоСтрокамOData(АдресТеста, "test-user", "test-password", "ДвижжОК ООО", "%MULTI%", Составной, "2026-10-15")
+    ТребоватьПроверку(Новый.Получить("posted") == Истина и ЕщеРаз.Получить("alreadyPosted") == Истина, "Multiline order was not posted/reused")
     Консоль.Записать("PASS: market readiness, OData create/post, retries, conflicts, deleted documents and future-production orders")
     возврат 0
 ;
@@ -143,6 +155,9 @@ LIFECYCLE_DRIVER = r'''
     выбросить новый ИсключениеНедопустимоеСостояние("Market attempted HTTP phase exchange")
 ;
 структура ИграТеста
+    пер Публикаций: Число = 0
+    пер ПараметрыРынка: Массив<ПравилоФазыЦенТеста> = []
+    пер СвободныйРынок: Булево = Истина
     пер ТолькоРынок: Булево = Истина
     пер ЧислоРаундов: Число = 1
     пер Статус: Строка = "running"
@@ -164,6 +179,9 @@ LIFECYCLE_DRIVER = r'''
     пер Состояние: Строка = ""
     пер ВремяЗакрытия: Момент?
 ;
+структура ПравилоФазыЦенТеста
+    пер Продукт: Строка?
+;
 структура СрокТеста
     пер Фаза: Строка
     пер ДлительностьМинут: Число
@@ -181,7 +199,7 @@ def lifecycle_source():
     body = body.replace('    РынокЗаказов.ФиксироватьИтогиРаунда(Игра)\n', '')
     body = body.replace('ОбменERP.ОткрытьУчастникам(', 'ОткрытьУчастникамТеста(')
     body = body.replace('СоздатьРаунд(', 'СоздатьРаундТеста(').replace('СохранитьПереход(', 'СохранитьПереходТеста(')
-    for key, value in {'ФазыИгры.Подготовка': 'preparation', 'ФазыИгры.СтартоваяПродажа': 'initial_sales',
+    for key, value in {'ФазыИгры.Ценообразование': 'pricing', 'ФазыИгры.Подготовка': 'preparation', 'ФазыИгры.СтартоваяПродажа': 'initial_sales',
                        'ФазыИгры.Продажи': 'sales', 'СостоянияФазы.Открыта': 'open',
                        'СостоянияФазы.Закрыта': 'closed', 'СостоянияИгры.Завершена': 'finished'}.items():
         body = body.replace(key, '"' + value + '"')
@@ -295,6 +313,7 @@ MARKET_DRIVER = r'''
 метод ЗаписатьКомандуРезерва(Игра: ИграРезерва, Заказ: ЗаказРезерва)
 ;
 структура ИграРезерва
+    пер ЗаказыПоЦенамERP: Булево = Ложь
     пер РынокОткрыт: Булево = Истина
     пер СвободныйРынок: Булево = Истина
     пер Статус: Строка = "running"
@@ -308,6 +327,7 @@ MARKET_DRIVER = r'''
     пер Игра: ИграРезерва
 ;
 структура ЗаказРезерва
+    пер СтрокиЗаказаJson: Строка = ""
     пер Игра: ИграРезерва
     пер Раунд: Число = 1
     пер Участник: КомандаРезерва?
@@ -458,6 +478,7 @@ GENERATION_DRIVER = r'''
     Игра.Заказы.Добавить(Заказ)
 ;
 структура ИграГенерации
+    пер ЗаказыПоЦенамERP: Булево = Ложь
     пер Время: Момент
     пер ТокенФазы: Строка = "phase"
     пер КомандыЗавершения: Массив<КомандаЗавершенияТеста> = []
@@ -549,6 +570,10 @@ def generation_source():
 
 
 BACKGROUND_DRIVER = r'''
+метод СборПрайсЛистовФона(Игра: ИграГенерации): Булево
+    возврат Ложь
+;
+
 метод ПроверитьФоновоеПоявление()
     для ТолькоРынок из [Истина, Ложь]
         знч Игра = новый ИграГенерации(ТолькоРынок = ТолькоРынок, ДанныеГотовы = Ложь,
@@ -618,6 +643,7 @@ def background_source():
     body = body.replace('знч Игра = СсылкаИгры', 'знч Игра: ИграГенерации? = СсылкаИгры').replace('знч Команда = Участник', 'знч Команда: КомандаФона? = Участник')
     for original, replacement in {
         'РынокЗаказов.ПродажиОткрыты': 'ПродажиГенерации',
+        'РынокЗаказов.СборПрайсЛистовОткрыт': 'СборПрайсЛистовФона',
         'РынокЗаказов.СинхронизироватьСтатусыERP': 'ПрочитатьСтатусыФона',
         'РынокЗаказов.СинхронизироватьРынокФоном': 'ПрочитатьОстаткиФона',
         'РынокЗаказов.Обновить': 'ОбновитьГенерацию',
@@ -704,7 +730,7 @@ def main():
     parser.add_argument('--runtime', type=Path, required=True)
     parser.add_argument('--java', default='java')
     args = parser.parse_args()
-    ids = {name: uid('market-' + name) for name in ('first', 'recover', 'lost', 'conflict', 'deleted', 'stock', 'legacy')}
+    ids = {name: uid('market-' + name) for name in ('first', 'recover', 'lost', 'conflict', 'deleted', 'stock', 'legacy', 'multi')}
     driver = DRIVER
     for key, value in ids.items():
         driver = driver.replace('%' + key.upper() + '%', value)
@@ -715,14 +741,16 @@ def main():
     protocol = (EXCHANGE / 'ПротоколERP.xbsl').read_text().split('@ВПроекте\nметод УникальныеПоля', 1)[0]
     body = '\n'.join([protocol, method((EXCHANGE / 'КлиентERP.xbsl').read_text(), 'КлючФоновогоЗадания'), (EXCHANGE / 'КонтрактERP.xbsl').read_text(),
                       method((EXCHANGE / 'ПрофильНастройкиOData.xbsl').read_text(), 'Получить').replace('метод Получить(', 'метод ПолучитьПрофиль('),
+                      method((EXCHANGE / 'ПротоколERP.xbsl').read_text(), 'Деньги'),
                       *(method(odata, name) for name in ('СоздатьЗаказПоСтрокамOData', 'ПроверитьСтрокиЗаказаERP',
                         'ТоварыЗаказаERP', 'Найти', 'Разрешить', 'Совпадает', 'ПровестиДокумент',
-                        'ЗапросOData', 'ПрочитатьВсе', 'ОстатокПродукта', 'СоединитьСтроки', 'ПрочитатьОстаткиРынкаOData')),
+                        'ЗапросOData', 'ПрочитатьВсе', 'ОстатокПродукта', 'СоединитьСтроки', 'ПрочитатьОстаткиРынкаOData', 'ПрочитатьПрайсЛистOData', 'ПоследняяЦена')),
                       method(summary, 'КомандаГотова'), method(summary, 'ПричинаОжидания'), lifecycle_source(),
                       *(method(market, name) for name in ('ДинамическаяЦена', 'РазмерНовогоЗаказа', 'ВыбратьМодельПакета', 'ПараметрыПакета')),
                       method(checks, 'СтабильныйПриоритет'), method(checks, 'ПроверитьПараметрыЗаказов'),
-                      reservation_source(), generation_source(), background_source(), cabinet_source(), timeout_source(), stock_source(), status_source(), access_source(),
+                      price_collection_source(), price_phase_source(), reservation_source(), generation_source(), background_source(), cabinet_source(), timeout_source(), stock_source(), status_source(), access_source(),
                       MARKET_DRIVER, GENERATION_DRIVER, driver])
+    body = body.replace('ФазыИгры.Ценообразование', '"pricing"').replace('ФазыИгры.СтартоваяПродажа', '"initial_sales"').replace('ФазыИгры.Продажи', '"sales"')
     body = re.sub(r'^импорт .+\n|^@[^\n]+\n', '', body, flags=re.M)
     body = body.replace('ПротоколERP.', '').replace('КонтрактERP.', '')
     body = body.replace('ПрофильНастройкиOData.Получить()', 'ПолучитьПрофиль()')
@@ -773,6 +801,9 @@ def main():
                 self.respond({}, 401)
                 return
             entity = path.split('(')[0].split('/')[0]
+            if self.command == 'GET' and entity == 'InformationRegister_ЦеныНоменклатуры25':
+                self.respond(erp.request(path, params=params))
+                return
             if self.command == 'GET' and '(guid' not in path and '/Balance(' not in path:
                 rows = copy.deepcopy(erp.rows.get(entity, []))
                 condition = params.get('$filter', '')
@@ -847,7 +878,10 @@ def main():
         server.server_close()
         thread.join(timeout=2)
     documents = [d for d in erp.rows['Document_ЗаказКлиента'] if not d.get("StatusTest")]
-    assert len(documents) == 7, 'Retry created a duplicate or future-production order is missing'
+    assert len(documents) == 8, 'Retry created a duplicate or future-production order is missing'
+    multi = next(d for d in documents if d['Комментарий'].endswith(ids['multi']))
+    assert multi['Posted'] and len(multi['Товары']) == 2 and multi['СуммаДокумента'] == 160000
+    assert sum(d['Комментарий'].endswith(ids['multi']) for d in documents) == 1
     future = next(d for d in documents if d['Комментарий'].endswith(ids['stock']))
     assert future['Posted'] and future['Товары'][0]['ВариантОбеспечения'] == 'Обеспечивать'
     for name in ('first', 'recover', 'lost'):
@@ -865,8 +899,8 @@ def main():
     assert legacy['Posted'] and legacy['ЦенаВключаетНДС'] is False and legacy['Товары'][0]['СуммаНДС'] == 0
     assert not any(event[1] == legacy['Ref_Key'] for event in erp.posts), 'Legacy order was changed or posted again'
     assert not any(d.get('Posted') for d in documents if d['Комментарий'].endswith((ids['conflict'], ids['deleted'])))
-    assert all(path.startswith(('Catalog_', 'Document_', 'AccumulationRegister_')) for _, path, _, _ in requests)
-    print(f'PASS: {len(requests)} OData requests; 4 conducted orders including future production, no retry duplicates or HTTP-extension calls')
+    assert all(path.startswith(('Catalog_', 'Document_', 'AccumulationRegister_', 'InformationRegister_')) for _, path, _, _ in requests)
+    print(f'PASS: {len(requests)} OData requests; 5 conducted orders including multi-line and future production, no retry duplicates or HTTP-extension calls')
 
 
 if __name__ == '__main__':
