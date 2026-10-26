@@ -22,6 +22,7 @@ from test_round_timeout import timeout_source
 from test_price_order_lifecycle import price_collection_source, price_phase_source
 from test_market_stock import stock_source
 from test_market_access import access_source
+from test_player_completion import completion_source
 from test_market_order_status import status_source, add_status_fixtures
 
 DRIVER = r'''
@@ -51,6 +52,7 @@ DRIVER = r'''
     знч ТолькоЦены = ПрочитатьПрайсЛистOData(АдресТеста, "test-user", "test-password", "ДвижжОК ООО", "2026-10-15T23:59:59", Ложь)
     ТребоватьПроверку(ОбъектJson(МассивJson(ТолькоЦены.Получить("offers"))[0]).Получить("availableQuantity") == 0, "Price-only read depends on stocks")
     ПроверитьСборЦен()
+    ПроверитьЗавершениеИгроком()
     ПроверитьЦеновыеФазы()
     ПроверитьПереходыРынка()
     ПроверитьДинамическийРынок()
@@ -381,6 +383,14 @@ def reservation_source():
 
 
 GENERATION_DRIVER = r'''
+метод ПервыйЗаказПланаТеста(Игра: ИграГенерации, Раунд: РаундГенерации, Продукт: ПродуктГенерации): ЗаказГенерации?
+    для Заказ из Игра.Заказы
+        если Заказ.Раунд == Раунд и Заказ.Продукт == Продукт и Заказ.ОснованиеЦены != ""
+            возврат Заказ
+        ;
+    ;
+    возврат Неопределено
+;
 метод ПроверитьПубликациюЗаказов()
     знч Игра = новый ИграГенерации()
     Игра.Время = Момент.Сейчас()
@@ -391,18 +401,21 @@ GENERATION_DRIVER = r'''
     ;
     Игра.ДанныеГотовы = Ложь
     ОбновитьГенерацию(Игра)
-    ТребоватьПроверку(Игра.Заказы.Размер() == 1 и Игра.Заказы[0].Цена == 75000,
-        "Zero or missing stock blocked demand or did not use maximum price")
+    ТребоватьПроверку(Игра.Заказы.Пусто(), "Zero or missing supply created demand")
     Игра.ДанныеГотовы = Истина
     Игра.МаксимумОднойКоманды = 2
     Игра.СледующийЗаказ = Игра.Время - 1с
     ОбновитьГенерацию(Игра)
-    ТребоватьПроверку(Игра.Заказы.Размер() == 2 и Игра.Заказы[1].Количество == 3,
+    ТребоватьПроверку(Игра.Заказы.Размер() == 1 и Игра.Заказы[0].Количество == 3,
         "Single team stock incorrectly capped market demand")
+    знч ПродуктПлана = Игра.Заказы[0].Продукт!
+    ТребоватьПроверку(ПланСпросаРынка(Игра, Игра.ТекущийРаунд!, ПродуктПлана, 0) == 8
+        и ПланСпросаРынка(Игра, Игра.ТекущийРаунд!, ПродуктПлана, 100) == 8,
+        "Claiming stock or later replenishment changed the frozen demand plan")
     Игра.МаксимумОднойКоманды = 10
     Игра.СледующийЗаказ = Момент.Сейчас() - 1с
     ОбновитьГенерацию(Игра)
-    ТребоватьПроверку(Игра.Заказы.Размер() == 3, "Worker delay flooded market instead of publishing one small order")
+    ТребоватьПроверку(Игра.Заказы.Размер() == 2, "Worker delay flooded market instead of publishing one small order")
     для Заказ из Игра.Заказы
         ТребоватьПроверку(Заказ.Количество == 3 и Заказ.Цена >= 35000 и Заказ.Цена <= 75000,
             "Published order ignored configured quantity/price bounds")
@@ -420,13 +433,13 @@ GENERATION_DRIVER = r'''
         Шаг = Шаг + 1
     ;
     знч ПослеЗаполнения = Игра.Заказы.Размер()
-    ТребоватьПроверку(ПослеЗаполнения == 12, "Market did not fill demand to minimum batch boundary")
+    ТребоватьПроверку(ПослеЗаполнения == 8, "Market did not fill 80% of supply to minimum batch boundary")
     Игра.Заказы[0].Получен = Истина
     Игра.СледующийЗаказ = Игра.Время - 1с
     ОбновитьГенерацию(Игра)
     ТребоватьПроверку(Игра.Заказы.Размер() == ПослеЗаполнения, "Claiming an order recreated covered demand")
     для Правило из Игра.ПараметрыРынка
-        ТребоватьПроверку(ПосчитатьЗаказыГенерации(Игра, Правило.Продукт!, Ложь).Количество <= 10,
+        ТребоватьПроверку(ПосчитатьЗаказыГенерации(Игра, Правило.Продукт!, Ложь).Количество <= 8,
             "Shared queue exceeds demand")
     ;
     Игра.СледующийЗаказ = Момент.Сейчас() - 10с
@@ -437,7 +450,7 @@ GENERATION_DRIVER = r'''
     Игра.Дедлайн = Момент.Сейчас() - 1с
     ОбновитьГенерацию(Игра)
     ТребоватьПроверку(Игра.Заказы.Размер() == ПослеЗаполнения, "Expired phase published new orders")
-    Консоль.Записать("PASS: original generation method with in-memory persistence, demand caps independent of stock, configured batches, repeated reads, pause/deadline guards")
+    Консоль.Записать("PASS: original generation uses 80% supply demand, freezes plan through stock changes, respects configured batches, repeated reads, pause/deadline guards")
 ;
 метод ПроверитьНулевыеОстаткиИИнтервалы()
     для Фаза из ["initial_sales", "sales"]
@@ -466,9 +479,13 @@ GENERATION_DRIVER = r'''
             Игра.Время = Игра.Время + 1с
             Секунд = Секунд + 1
         ;
-        ТребоватьПроверку(Игра.Заказы.Размер() >= 24, "Zero stock left market empty after two minutes: " + Фаза)
+        ТребоватьПроверку(Игра.Заказы.Пусто(), "Zero stock created percentage demand: " + Фаза)
+        Игра.ДанныеГотовы = Истина
+        Игра.СледующийЗаказ = Игра.Время - 1с
+        ОбновитьГенерацию(Игра)
+        ТребоватьПроверку(Игра.Заказы.Размер() == 1, "Supply recovery did not create demand")
     ;
-    Консоль.Записать("PASS: initial and regular sales publish orders with zero/missing stock for 120 seconds at configured 2-5 second intervals")
+    Консоль.Записать("PASS: percentage demand stays zero without supply for 120 seconds; recovered supply starts orders in initial and regular sales")
 ;
 метод ПредложениеГенерации(Игра: ИграГенерации): Соответствие<Строка, Объект?>
     если не Игра.ДанныеГотовы
@@ -493,6 +510,7 @@ GENERATION_DRIVER = r'''
     Игра.Заказы.Добавить(Заказ)
 ;
 структура ИграГенерации
+    пер ПроцентСпроса: Число = 80
     пер ЗаказыПоЦенамERP: Булево = Ложь
     пер Время: Момент
     пер ТокенФазы: Строка = "phase"
@@ -566,7 +584,12 @@ GENERATION_DRIVER = r'''
 
 def generation_source():
     source = (EXCHANGE / 'РынокЗаказов.xbsl').read_text()
-    body = '\n'.join(method(source, name) for name in ('Обновить', 'ПродажиОткрыты'))
+    body = '\n'.join(method(source, name) for name in ('Обновить', 'ПродажиОткрыты', 'ПланСпросаРынка'))
+    body = body.replace('РаундыИгры.Ссылка', 'РаундГенерации').replace('НоменклатураИгры.Ссылка', 'ПродуктГенерации')
+    body, count = re.subn(r'Запрос\{ВЫБРАТЬ ПЕРВЫЕ 1 ОснованиеЦены ИЗ ЗаказыРынка.*?ПервыйИлиНеопределено\(\)',
+                         'ПервыйЗаказПланаТеста(Игра, Раунд, Продукт)', body, flags=re.S)
+    assert count == 1
+    body = body.replace('РасчетРынка.СпросОтПредложения', 'СпросОтПредложения')
     body = body.replace('метод Обновить(', 'метод ОбновитьГенерацию(').replace('ПродажиОткрыты(', 'ПродажиГенерации(')
     body = body.replace('Игры.Ссылка', 'ИграГенерации').replace('Игры.Объект', 'ИграГенерации')
     body = re.sub(r'^    исп (?:КонтекстДоступа|Транзакции).+\n', '', body, flags=re.M)
@@ -763,7 +786,8 @@ def main():
                       method(summary, 'КомандаГотова'), method(summary, 'ПричинаОжидания'), lifecycle_source(),
                       *(method(market, name) for name in ('ДинамическаяЦена', 'РазмерНовогоЗаказа', 'ВыбратьМодельПакета', 'ПараметрыПакета')),
                       method(checks, 'СтабильныйПриоритет'), method(checks, 'ПроверитьПараметрыЗаказов'),
-                      price_collection_source(), price_phase_source(), reservation_source(), generation_source(), background_source(), cabinet_source(), timeout_source(), stock_source(), status_source(), access_source(),
+                      method(checks, 'ПроверитьПроцентСпроса'), method((EXCHANGE.parent / 'Рынок/РасчетРынка.xbsl').read_text(), 'СпросОтПредложения'),
+                      price_collection_source(), price_phase_source(), reservation_source(), generation_source(), background_source(), cabinet_source(), timeout_source(), stock_source(), status_source(), access_source(), completion_source(),
                       MARKET_DRIVER, GENERATION_DRIVER, driver])
     body = body.replace('ФазыИгры.Ценообразование', '"pricing"').replace('ФазыИгры.СтартоваяПродажа', '"initial_sales"').replace('ФазыИгры.Продажи', '"sales"')
     body = re.sub(r'^импорт .+\n|^@[^\n]+\n', '', body, flags=re.M)
@@ -771,6 +795,9 @@ def main():
     body = body.replace('ПрофильНастройкиOData.Получить()', 'ПолучитьПрофиль()')
     body = body.replace('Транзакции.ЕстьАктивная()', 'Ложь').replace('НормализоватьАдрес(Адрес)', 'Адрес')
     body = body.replace('ПроверкиДанных.Требовать(', 'ТребоватьПроверку(').replace('СнимкиERP.Ссылка?', 'Строка?')
+    body = body.replace('ПроверкиДанных.ПроверитьПроцентСпроса', 'ПроверитьПроцентСпроса')
+    body = body.replace('ПроверкиДанных.ЦелоеНеотрицательное', 'ЦелоеНеотрицательноеЦенТеста')
+    body = body.replace('    Требовать(Процент', '    ТребоватьПроверку(Процент')
     body = body.replace('ПроверкиДанных.СтабильныйПриоритет', 'СтабильныйПриоритет').replace('ПроверкиДанных.ПроверитьПараметрыЗаказов', 'ПроверитьПараметрыЗаказов')
     body = body.replace('        Требовать(Значение >=', '        ТребоватьПроверку(Значение >=').replace('    Требовать(Макс', '    ТребоватьПроверку(Макс')
     erp = ERP()
