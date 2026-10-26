@@ -238,10 +238,9 @@
           "priceFixation": {
             "type": "string",
             "enum": [
-              "after_planning",
               "before_sales"
             ],
-            "description": "Момент фиксации цены. Значения: after_planning, before_sales."
+            "description": "Последние активные цены считываются из ERP перед каждым этапом продаж, включая стартовую продажу, без ограничения игровой датой. Значения: before_sales."
           },
           "currency": {
             "type": "string",

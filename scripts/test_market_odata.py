@@ -34,6 +34,20 @@ DRIVER = r'''
     знч Прайс = ПрочитатьПрайсЛистOData(АдресТеста, "test-user", "test-password", "ДвижжОК ООО", "2026-10-15T23:59:59", Истина)
     ТребоватьПроверку(МассивJson(Прайс.Получить("offers")).Размер() == 4, "ERP price list did not contain all four models")
     ТребоватьПроверку(Json(Прайс).Длина() <= 1000, "Price snapshot exceeds Element string field limit")
+    знч ИграSportDrive = новый ИграЦенТеста()
+    ИграSportDrive.ПараметрыРынка = [новый ПравилоЦенТеста(Код = "SportDrive", МинимальнаяЦена = 60000, МаксимальнаяЦена = 120000)]
+    ПроверитьПрайсЛистЦенТеста(ИграSportDrive, Прайс)
+    пер НайденSportDrive = Ложь
+    для Значение из МассивJson(Прайс.Получить("offers"))
+        знч Предложение = ОбъектJson(Значение)
+        если Предложение.Получить("productCode") == "SportDrive"
+            НайденSportDrive = Истина
+            ТребоватьПроверку(Предложение.Получить("price") == "65000.00"
+                и Предложение.Получить("pricePeriod") == "2026-10-26T10:00:00",
+                "SportDrive used old 45000 price at game date instead of latest active 65000")
+        ;
+    ;
+    ТребоватьПроверку(НайденSportDrive, "SportDrive price was not read")
     знч ТолькоЦены = ПрочитатьПрайсЛистOData(АдресТеста, "test-user", "test-password", "ДвижжОК ООО", "2026-10-15T23:59:59", Ложь)
     ТребоватьПроверку(ОбъектJson(МассивJson(ТолькоЦены.Получить("offers"))[0]).Получить("availableQuantity") == 0, "Price-only read depends on stocks")
     ПроверитьСборЦен()
@@ -761,6 +775,15 @@ def main():
     body = body.replace('        Требовать(Значение >=', '        ТребоватьПроверку(Значение >=').replace('    Требовать(Макс', '    ТребоватьПроверку(Макс')
     erp = ERP()
     apply(erp, PROFILE)
+    opening_prices = erp.rows['Document_УстановкаЦенНоменклатуры'][0]
+    sport = next(row for row in opening_prices['Товары2_5'] if row['Цена'] == 45000)
+    sport = copy.deepcopy(sport)
+    sport['Цена'] = 65000
+    erp.add('Document_УстановкаЦенНоменклатуры', {
+        'Date': '2026-10-26T10:00:00', 'Posted': True, 'Товары2_5': [sport]})
+    # A newer unposted document must not hide the active 65000 price.
+    erp.add('Document_УстановкаЦенНоменклатуры', {
+        'Date': '2026-10-26T11:00:00', 'Posted': False, 'Товары2_5': [{**sport, 'Цена': 55000}]})
     add_status_fixtures(erp)
     erp.posts = []
     requests = []

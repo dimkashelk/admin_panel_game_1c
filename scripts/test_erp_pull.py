@@ -73,6 +73,9 @@ def fixtures():
     bad['receipt'].update(errorCode='MONTH_NOT_CLOSED', errorMessage='Close the month')
     case('explained failure', bad, True)
     profile = json.loads((ROOT / 'profiles/erp-1538259/game-profile.json').read_text())
+    case('prices read before every sales stage', profile['settings'], True, 'GameSettings')
+    obsolete = copy.deepcopy(profile['settings']); obsolete['priceFixation'] = 'after_planning'
+    case('planning price fixation no longer supported', obsolete, False, 'GameSettings')
     context = dict(contractVersion='1.0', gameId=uid('game'), participantId=uid('team'), roundNumber=0,
                    phaseCode='initialization', phaseToken=uid('phase'), stateVersion=1, gameState='preparing',
                    gameMonth='2026-01', documentDate='2026-01-01', deadline=None,
@@ -118,6 +121,13 @@ DRIVER = r'''
     ПодставитьСнимок(Данные, "erp-message", "local-snapshot")
     Требовать(Данные.Получить("snapshotId") == "local-snapshot", "TEST", "Snapshot reference was not translated")
     Пройдено = Пройдено + 1
+    знч ПравилаЦен: Соответствие<Строка, Объект?> = {"products": <Объект?>[
+        {"productCode": "SportDrive", "minPrice": "60000.00", "maxPrice": "120000.00"}]}
+    знч НачальныеЦены: Соответствие<Строка, Объект?> = {"initialPrices": <Объект?>[
+        {"productCode": "SportDrive", "price": "45000.00"}]}
+    ПроверитьЦенуПредложения(ПравилаЦен, НачальныеЦены, 0, "SportDrive", 65000)
+    ПроверитьЦенуПредложения(ПравилаЦен, НачальныеЦены, 1, "SportDrive", 65000)
+    Пройдено = Пройдено + 2
     пер Отклонено = Ложь
     попытка
         ПодставитьСнимок(<Строка, Объект?>{"snapshotId": "foreign-message"}, "erp-message", "local-snapshot")
@@ -187,6 +197,7 @@ def main():
     odata = (EXCHANGE / 'НастройкаБазOData.xbsl').read_text()
     checks = (EXCHANGE.parent / 'Данные/ПроверкиДанных.xbsl').read_text()
     body = '\n'.join([protocol, contract, method(pull, 'ПодставитьСнимок'),
+                      method((EXCHANGE / 'НастройкиERP.xbsl').read_text(), 'ПроверитьЦенуПредложения'),
                       method(odata, 'ПроверитьСтрокиЗаказаERP'), method(odata, 'ТоварыЗаказаERP'),
                       method(pull, 'ЗапросHttp'), method(pull, 'АдресСервиса'), method(checks, 'Требовать'), DRIVER])
     body = re.sub(r'^импорт .+\n|^@[^\n]+\n', '', body, flags=re.M)

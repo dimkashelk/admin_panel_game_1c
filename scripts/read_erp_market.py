@@ -16,9 +16,9 @@ from setup_erp_odata import OData, ROOT, ZERO, SetupError, resolve, read_all
 PRODUCTS = ('CityRide', 'SportDrive', 'CargoMax', 'TourPro')
 
 
-def latest_price(record_sets, item_id, price_type, currency, at):
+def latest_price(record_sets, item_id, price_type, currency, at=None):
     candidates = [r for rs in record_sets for r in rs['RecordSet']
-                  if r['Active'] and r['Period'] <= at
+                  if r['Active'] and (at is None or r['Period'] <= at)
                   and r['Номенклатура_Key'] == item_id and r['ВидЦены_Key'] == price_type
                   and r['ХарактеристикаЦО_Key'] == ZERO and r['УпаковкаЦО_Key'] == ZERO
                   and r['СерияЦО_Key'] == ZERO and r['МаркетинговоеМероприятие_Key'] == ZERO]
@@ -86,7 +86,7 @@ def snapshot(client, at, organization_name):
         item = records[code]
         if item['ЕдиницаИзмерения_Key'] != refs['pcs']:
             raise SetupError('Единица велосипедов отличается от шт.: ' + code)
-        price, period = latest_price(prices, item['Ref_Key'], refs['sales_price'], refs['rub'], at)
+        price, period = latest_price(prices, item['Ref_Key'], refs['sales_price'], refs['rub'])
         physical, shipping, available = available_stock(stock, item['Ref_Key'], refs['finished_goods'], commitments)
         offers.append(dict(productCode=code, refKey=item['Ref_Key'], description=item['Description'],
                            price=format(price, '.2f'), pricePeriod=period, physicalQuantity=str(physical),
@@ -138,7 +138,7 @@ def snapshot(client, at, organization_name):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--url', required=True)
-    parser.add_argument('--as-of', required=True, help='Game time YYYY-MM-DDTHH:MM:SS')
+    parser.add_argument('--as-of', required=True, help='Game time for balances and costs YYYY-MM-DDTHH:MM:SS; sale prices use the latest active record')
     parser.add_argument('--organization-name', required=True)
     parser.add_argument('--output', required=True, type=Path)
     args = parser.parse_args()
