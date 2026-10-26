@@ -1235,11 +1235,11 @@
             "ODATA_UNIT", "Единица велосипедов отличается от шт.: %{Код}")
         знч Цена = ПоследняяЦена(Цены, Ид, ВидЦены, Ссылки.Получить("rub"), ДатаДанных)
         знч Остаток = ОстатокПродукта(Остатки, Ид, Ссылки.Получить("finished_goods"), Обязательства)
-        Предложения.Добавить({"productCode": Код, "refKey": Ид, "description": Товар.Получить("Description"),
+        // В снимке сохраняются только поля расчёта: строковый реквизит ограничен 1000 символами.
+        Предложения.Добавить({"productCode": Код,
             "price": ПротоколERP.Деньги(ПротоколERP.ЧислоJson(Цена, "Цена")), "pricePeriod": Цена.Получить("Period"),
-            "physicalQuantity": Остаток.Получить("physicalQuantity"), "shippingQuantity": Остаток.Получить("shippingQuantity"),
-            "availableQuantity": Остаток.Получить("availableQuantity"), "unitCode": "pcs"})
+            "availableQuantity": Остаток.Получить("availableQuantity")})
     ;
-    возврат {"asOf": ДатаДанных, "priceTypeName": ТипЦены.Получить("Description"),
+    возврат {"asOf": ДатаДанных, "priceTypeId": Ссылки.Получить("sales_price"),
         "priceIncludesVAT": ТипЦены.Получить("ЦенаВключаетНДС"), "offers": Предложения}
 ;

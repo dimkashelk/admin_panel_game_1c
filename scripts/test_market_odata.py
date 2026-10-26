@@ -33,6 +33,7 @@ DRIVER = r'''
         "Background team key exceeds platform length limit or mixes teams")
     знч Прайс = ПрочитатьПрайсЛистOData(АдресТеста, "test-user", "test-password", "ДвижжОК ООО", "2026-10-15T23:59:59", Истина)
     ТребоватьПроверку(МассивJson(Прайс.Получить("offers")).Размер() == 4, "ERP price list did not contain all four models")
+    ТребоватьПроверку(Json(Прайс).Длина() <= 1000, "Price snapshot exceeds Element string field limit")
     знч ТолькоЦены = ПрочитатьПрайсЛистOData(АдресТеста, "test-user", "test-password", "ДвижжОК ООО", "2026-10-15T23:59:59", Ложь)
     ТребоватьПроверку(ОбъектJson(МассивJson(ТолькоЦены.Получить("offers"))[0]).Получить("availableQuantity") == 0, "Price-only read depends on stocks")
     ПроверитьСборЦен()
