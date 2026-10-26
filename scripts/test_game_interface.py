@@ -54,6 +54,16 @@ class GameInterfaceTests(unittest.TestCase):
                         for control in re.findall(r'Компоненты\.(\w+)', value):
                             self.assertIn(control, controls)
 
+    def test_property_declarations_have_no_control_settings(self):
+        form = yaml.safe_load((ROOT / 'Управление/НастройкаИгры.yaml').read_text())
+        for prop in form.get('Свойства', []):
+            self.assertNotIn('Доступность', prop, prop['Имя'])
+            self.assertNotIn('Видимость', prop, prop['Имя'])
+
+    def test_list_editor_subsystem_dependency_is_declared(self):
+        subsystem = yaml.safe_load((ROOT / 'Данные/Подсистема.yaml').read_text())
+        self.assertIn('Управление', subsystem.get('Использование', []))
+
     def test_client_catches_notify_or_propagate(self):
         count = 0
         for path in ROOT.rglob('*.yaml'):
