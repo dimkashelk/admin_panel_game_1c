@@ -59,15 +59,62 @@ DRIVER = r'''
         ;
     ;
     ТребоватьПроверку(Проверено == 56, "Incomplete scenario mapping")
-    Условия.Вставить("balances", <Объект?>[])
+    // Профиль и условия намеренно разделяют initial, как при создании игры.
+    знч Частичный = Прочитать(ПолучитьПрофиль())
+    знч ЧастичныеУсловия = ОбъектJson(Частичный.Получить("initial"))
+    ЧастичныеУсловия.Вставить("balances", <Объект?>[
+        {"itemCode": "CityRide", "warehouseId": "finished_goods", "quantity": "7", "unitCode": "pcs", "unitCost": "125.50"},
+        {"itemCode": "FRAME_CARGO", "warehouseId": "purchases", "quantity": "2.5", "unitCode": "pcs", "unitCost": "200.00"},
+        {"itemCode": "BAT_300", "warehouseId": "purchases", "quantity": "0", "unitCode": "pcs", "unitCost": "100.00"}])
+    ПрименитьУсловияКПрофилю(Частичный, ЧастичныеУсловия)
+    ТребоватьПроверку(МассивJson(ЧастичныеУсловия.Получить("balances")).Размер() == 26, "Partial scenario broke exchange contract")
+    пер Номенклатура = 0
+    пер СтрокОстатков = 0
+    для Элемент из МассивJson(Частичный.Получить("nodes"))
+        знч Узел = ОбъектJson(Элемент)
+        если Узел.Получить("entity") == "Catalog_Номенклатура"
+            Номенклатура = Номенклатура + 1
+        ;
+        знч Ключ = СтрокаJson(Узел, "key")
+        если ["initial_stock", "initial_components"].Содержит(Ключ)
+            для Товар из МассивJson(ОбъектJson(Узел.Получить("fields")).Получить("Товары"))
+                знч Строка = ОбъектJson(Товар)
+                ТребоватьПроверку(["@CityRide", "@FRAME_CARGO"].Содержит(СтрокаJson(Строка, "Номенклатура_Key")), "Template stock leaked into scenario")
+                ТребоватьПроверку(Строка.Получить("Количество") == (Ключ == "initial_stock" ? 7 : 2.5), "Partial quantity ignored")
+                СтрокОстатков = СтрокОстатков + 1
+            ;
+        ;
+    ;
+    ТребоватьПроверку(Номенклатура == 15 и СтрокОстатков == 2, "Nomenclature depends on opening stock")
+    // Ни компоненты, ни готовая продукция не обязательны в стартовом запасе.
+    для Код из ["CityRide", "FRAME_CARGO", ""]
+        знч Пустой = Прочитать(ПолучитьПрофиль())
+        знч ПустыеУсловия = ОбъектJson(Пустой.Получить("initial"))
+        знч Выбранные = <Объект?>[]
+        для Элемент из МассивJson(ПустыеУсловия.Получить("balances"))
+            если ОбъектJson(Элемент).Получить("itemCode") == Код
+                Выбранные.Добавить(Элемент)
+            ;
+        ;
+        ПустыеУсловия.Вставить("balances", Выбранные)
+        ПрименитьУсловияКПрофилю(Пустой, ПустыеУсловия)
+        для Элемент из МассивJson(Пустой.Получить("nodes"))
+            знч Узел = ОбъектJson(Элемент)
+            знч Ключ = СтрокаJson(Узел, "key")
+            ТребоватьПроверку(Ключ != (Код == "CityRide" ? "initial_components" : "initial_stock"), "Empty stock document created")
+            ТребоватьПроверку(Код != "" или Ключ != "initial_components", "Empty components document created")
+        ;
+        ТребоватьПроверку(МассивJson(ПустыеУсловия.Получить("balances")).Размер() == 26, "Missing zero balances")
+    ;
+    Условия.Вставить("balances", <Объект?>[{"itemCode": "UNKNOWN", "warehouseId": "purchases"}])
     пер Отклонено = Ложь
     попытка
         ПрименитьУсловияКПрофилю(Профиль, Условия)
     поймать Ошибка: Исключение
         Отклонено = Истина
     ;
-    ТребоватьПроверку(Отклонено, "Incomplete scenario silently used template data")
-    Консоль.Записать("PASS: scenario quantities, costs, amounts, supplier/sales prices and missing-resource rejection before ERP writes")
+    ТребоватьПроверку(Отклонено, "Unknown initial resource accepted")
+    Консоль.Записать("PASS: full/partial/empty scenario, all nomenclature, exact positive stock, zero exchange balances and unknown resource rejection")
     возврат 0
 ;
 '''
@@ -81,6 +128,7 @@ def main():
     body = method((EXCHANGE / 'НастройкиERP.xbsl').read_text(), 'ПрименитьУсловияКПрофилю')
     body = re.sub(r'^@[^\n]+\n', '', body, flags=re.M).replace('ПротоколERP.', '')
     body = body.replace('ПроверкиДанных.Требовать', 'ТребоватьПроверку')
+    body = body.replace('ПрофильНастройкиOData.Получить()', 'ПолучитьПрофиль()')
     with tempfile.TemporaryDirectory(prefix='game-scenario-') as temp:
         directory = Path(temp)
         script = directory / 'Сценарий.sbsl'

@@ -66,6 +66,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--runtime', type=Path, required=True)
     parser.add_argument('--java', default='java')
+    parser.add_argument('--scenario-stock', choices=('full', 'partial', 'empty'), default='full')
     args = parser.parse_args()
     erp = ERP()
     erp.add('Catalog_Номенклатура', {'Description': 'Городской велосипед', 'Артикул': '',
@@ -136,7 +137,33 @@ def main():
             script = directory / 'Настройка.sbsl'
             body = setup_source().replace('НормализоватьАдрес(Адрес))', 'Адрес)')
             body = body.replace('знч Публикация = НормализоватьАдрес(Адрес)', 'знч Публикация = Адрес')
-            script.write_text(body + '\n' + DRIVER)
+            driver = DRIVER
+            if args.scenario_stock != 'full':
+                from test_game_scenario import DRIVER as SCENARIO_TESTS
+                mapper = method((EXCHANGE / 'НастройкиERP.xbsl').read_text(), 'ПрименитьУсловияКПрофилю')
+                mapper = re.sub(r'^@[^\n]+\n', '', mapper, flags=re.M).replace('ПротоколERP.', '')
+                mapper = mapper.replace('ПроверкиДанных.Требовать', 'ТребоватьПроверку')
+                mapper = mapper.replace('ПрофильНастройкиOData.Получить()', 'ПолучитьПрофиль()')
+                body += '\n' + SCENARIO_TESTS.split('метод Скрипт()', 1)[0] + mapper
+                codes = '["CityRide", "FRAME_CARGO"]' if args.scenario_stock == 'partial' else '<Строка>[]'
+                prepare = '''
+    знч Профиль = Прочитать(ПолучитьПрофиль())
+    знч Условия = ОбъектJson(Профиль.Получить("initial"))
+    знч Остатки = <Объект?>[]
+    для Элемент из МассивJson(Условия.Получить("balances"))
+        если КОДЫ.Содержит(СтрокаJson(ОбъектJson(Элемент), "itemCode"))
+            Остатки.Добавить(Элемент)
+        ;
+    ;
+    Условия.Вставить("balances", Остатки)
+    ПрименитьУсловияКПрофилю(Профиль, Условия)
+    знч ТекстПрофиля = Json(Профиль)
+'''.replace('КОДЫ', codes)
+                driver = driver.replace('метод Скрипт(Адрес: Строка): Число', 'метод Скрипт(Адрес: Строка): Число' + prepare)
+                for apply in ('Истина', 'Ложь'):
+                    call = f'Подготовить(Адрес, "test-user", "test-password", {apply}'
+                    driver = driver.replace(call + ')', call + ', "ДвижжОК ООО", "2026-10-15T00:00:00", ТекстПрофиля)')
+            script.write_text(body + '\n' + driver)
             command = [args.java, '-Xmx256m', '--add-opens', 'java.base/java.lang=ALL-UNNAMED',
                        '--add-opens', 'java.base/java.nio=ALL-UNNAMED', '-Dfile.encoding=UTF-8',
                        f'-Djava.io.tmpdir={directory}', f'-Dlogs.root={directory / "logs"}',
@@ -153,8 +180,14 @@ def main():
         server.server_close()
         thread.join(timeout=2)
     for entity in ('Document_ВводОстатковТоваров', 'Document_ВводОстатковДенежныхСредств', 'Document_ВводОстатков'):
-        for doc in erp.rows[entity]:
+        for doc in erp.rows.get(entity, []):
             assert sum(p[1:] == (doc['Ref_Key'], 'Post') for p in erp.posts) == 1, entity
+    stock = erp.rows.get('Document_ВводОстатковТоваров', [])
+    if args.scenario_stock != 'full':
+        assert len(erp.rows['Catalog_Номенклатура']) == 15, 'Missing nomenclature without opening stock'
+        assert sum(len(doc['Товары']) for doc in stock) == (2 if args.scenario_stock == 'partial' else 0)
+        assert all(row['Количество'] > 0 for doc in stock for row in doc['Товары'])
+        assert len(stock) == (2 if args.scenario_stock == 'partial' else 0), 'Empty stock documents'
     print(f'PASS: {len(requests)} native OData requests; opening documents posted exactly once')
 
 
