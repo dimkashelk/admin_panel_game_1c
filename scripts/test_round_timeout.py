@@ -140,6 +140,15 @@ DRIVER = r'''
         ЗавершитьПоСроку(Игра)
         ТребоватьПроверку(Игра.Заявления.Пусто(), "Invalid/unlimited game completed automatically")
     ;
+    знч Проверка = ИграЗавершенияТеста()
+    Проверка.Время = Проверка.Дедлайн!
+    знч Ожидающий = новый ЗаказГенерации(Раунд = Проверка.ТекущийРаунд, Участник = "offline", Статус = "Проведен в ERP")
+    Проверка.Заказы = [Ожидающий]
+    ЗавершитьПоСроку(Проверка)
+    ТребоватьПроверку(Ожидающий.ВремяФиксацииИтога == Неопределено, "Result frozen before automatic shipment/payment check")
+    Ожидающий.ПроверенПриЗавершении = Истина
+    ЗавершитьПоСроку(Проверка)
+    ТребоватьПроверку(Ожидающий.ВремяФиксацииИтога == Проверка.Дедлайн, "Checked partial order never finalized")
     Консоль.Записать("PASS: original XBSL timeout completion at deadline in both modes, offline teams, audit, idempotency, phase/round isolation and pause/unlimited guards")
 ;
 метод ИграЗавершенияТеста(): ИграГенерации

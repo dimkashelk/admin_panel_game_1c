@@ -23,6 +23,8 @@ from test_price_order_lifecycle import price_collection_source, price_phase_sour
 from test_market_stock import stock_source
 from test_market_access import access_source
 from test_player_completion import completion_source
+from test_stage_order_completion import stage_order_source
+from test_cabinet_refresh import cabinet_refresh_source
 from test_market_order_status import status_source, add_status_fixtures
 
 DRIVER = r'''
@@ -86,6 +88,8 @@ DRIVER = r'''
     ПроверитьСравнениеКабинета()
     ПроверитьЗакреплениеЗаказа()
     ПроверитьЗакрытиеВКабинете()
+    ПроверитьАвтозакрытиеЗаказов()
+    ПроверитьОбновлениеИЭтапы()
     ПроверитьАвтозавершение()
     ПроверитьПринудительноеЗавершение()
     ПроверитьДоступЗавершенногоКабинета()
@@ -314,8 +318,8 @@ MARKET_DRIVER = r'''
     ТребоватьПроверку(Заказ.Попытка == НоваяПопытка и Заказ.Статус == "Отправляется", "Stale response overwrote new attempt")
     ПодтвердитьТеста(ПерваяКоманда, Заказ, НоваяПопытка,
         <Строка, Объект?>{"posted": Истина, "refKey": "erp-id", "number": "ERP-1", "date": "2026-10-15T00:00:00", "erpStatus": "КОтгрузке"}, "")
-    ТребоватьПроверку(Заказ.Статус == "Проведен в ERP" и РезервироватьТеста(ПерваяКоманда, Заказ, "phase") == "",
-        "Confirmed order can be sent again")
+    ТребоватьПроверку(Заказ.Статус == "Проведен в ERP" и РезервироватьТеста(ПерваяКоманда, Заказ, "phase") != "",
+        "Confirmation cannot be verified again")
     знч ДругойЗаказ = новый ЗаказРезерва(Игра = Игра)
     знч ПопыткаОтказа = РезервироватьТеста(ПерваяКоманда, ДругойЗаказ, "phase")
     ПодтвердитьТеста(ПерваяКоманда, ДругойЗаказ, ПопыткаОтказа, Неопределено, "No stock", Истина)
@@ -417,6 +421,8 @@ MARKET_DRIVER = r'''
 метод ЗаписатьКомандуРезерва(Игра: ИграРезерва, Заказ: ЗаказРезерва)
 ;
 структура ИграРезерва
+    пер ЗаказыАвтозакрытия: Массив<ЗаказРезерва> = []
+    пер СостояниеФазы: Строка = "open"
     пер ЗаказЗакрытия: ЗаказРезерва?
     пер ЗаказыПоЦенамERP: Булево = Ложь
     пер РынокОткрыт: Булево = Истина
@@ -432,6 +438,9 @@ MARKET_DRIVER = r'''
     пер Игра: ИграРезерва
 ;
 структура ЗаказРезерва
+    пер СбойERP: Строка
+    пер ВызововERP: Число = 0
+    пер ПроверенПриЗавершении: Булево = Ложь
     пер ОплатаПодтвержденаERP: Булево = Ложь
     пер ДокументОплатыERP: Строка
     пер ОшибкаЗакрытияERP: Строка
@@ -469,6 +478,8 @@ def reservation_source():
     body = body.replace('УчастникиИгры.Ссылка', 'КомандаРезерва').replace('ЗаказыРынка.Ссылка', 'ЗаказРезерва').replace('Игры.Ссылка', 'ИграРезерва')
     body = re.sub(r'^    исп (?:КонтекстДоступа|Транзакции).+\n', '', body, flags=re.M)
     body = body.replace('ДоступКабинета.ПроверитьИгрока(', 'ПроверитьИгрокаРезерва(').replace('ДоступКабинета.Завершено(', 'ЗавершеноРезерва(')
+    body = body.replace('Участник.ЗагрузитьОбъект()!.Игра!', 'Участник.Игра')
+    body = body.replace('СостоянияФазы.Открыта', '"open"').replace('РаботаСЗаказамиОткрыта(', 'ПродажиОткрытыРезерва(')
     body = body.replace('СсылкаИгры.ЗагрузитьОбъект(Истина)!', 'СсылкаИгры').replace('СсылкаЗаказа.ЗагрузитьОбъект(Истина)!', 'СсылкаЗаказа')
     body = body.replace('    Заказ.Записать()\n', '').replace('ПродажиОткрыты(', 'ПродажиОткрытыРезерва(').replace('ЗаписатьКомандуERP(', 'ЗаписатьКомандуРезерва(')
     for key, value in {'СостоянияИгры.Идет': 'running', 'ФазыИгры.Продажи': 'sales', 'ФазыИгры.СтартоваяПродажа': 'initial_sales'}.items():
@@ -662,6 +673,10 @@ GENERATION_DRIVER = r'''
     пер Количество: Число
 ;
 структура ЗаказГенерации
+    пер Участник: Строка?
+    пер ПроверенПриЗавершении: Булево = Ложь
+    пер ЗакрытERP: Булево = Ложь
+    пер ОплатаПодтвержденаERP: Булево = Ложь
     пер Игра: ИграГенерации?
     пер Раунд: РаундГенерации?
     пер Продукт: ПродуктГенерации?
@@ -780,6 +795,7 @@ def background_source():
     for original, replacement in {
         'РынокЗаказов.ПродажиОткрыты': 'ПродажиГенерации',
         'РынокЗаказов.СборПрайсЛистовОткрыт': 'СборПрайсЛистовФона',
+        'РынокЗаказов.ЗавершитьЗаказыФоном': 'ЗавершитьЗаказыФона',
         'РынокЗаказов.СинхронизироватьСтатусыERP': 'ПрочитатьСтатусыФона',
         'РынокЗаказов.СинхронизироватьРынокФоном': 'ПрочитатьОстаткиФона',
         'РынокЗаказов.Обновить': 'ОбновитьГенерацию',
@@ -787,7 +803,7 @@ def background_source():
         'СинхронизироватьКоманду': 'ВыполнитьHttpФона',
     }.items():
         body = body.replace(original, replacement)
-    return body + BACKGROUND_DRIVER
+    return body + BACKGROUND_DRIVER + '\nметод ЗавершитьЗаказыФона(Игра: ИграГенерации, Команда: КомандаФона)\n;\n'
 
 
 def cabinet_source():
@@ -885,7 +901,7 @@ def main():
                       *(method(market, name) for name in ('ДинамическаяЦена', 'РазмерНовогоЗаказа', 'ВыбратьМодельПакета', 'ПараметрыПакета')),
                       method(checks, 'СтабильныйПриоритет'), method(checks, 'ПроверитьПараметрыЗаказов'),
                       method(checks, 'ПроверитьПроцентСпроса'), method((EXCHANGE.parent / 'Рынок/РасчетРынка.xbsl').read_text(), 'СпросОтПредложения'),
-                      price_collection_source(), price_phase_source(), reservation_source(), generation_source(), background_source(), cabinet_source(), timeout_source(), stock_source(), status_source(), access_source(), completion_source(),
+                      price_collection_source(), price_phase_source(), reservation_source(), generation_source(), background_source(), cabinet_source(), timeout_source(), stock_source(), status_source(), access_source(), completion_source(), stage_order_source(), cabinet_refresh_source(),
                       MARKET_DRIVER, GENERATION_DRIVER, driver])
     body = body.replace('ФазыИгры.Ценообразование', '"pricing"').replace('ФазыИгры.СтартоваяПродажа', '"initial_sales"').replace('ФазыИгры.Продажи', '"sales"')
     body = re.sub(r'^импорт .+\n|^@[^\n]+\n', '', body, flags=re.M)
@@ -998,7 +1014,7 @@ def main():
             if self.command == 'POST' and path.endswith('/Post()'):
                 key = path.split("(guid'", 1)[1].split("'", 1)[0]
                 document = erp.read(entity, key)
-                assert document.get('ДатаОтгрузки') == document['Date'], 'ERP requires header shipment date'
+                assert document.get('ДатаОтгрузки', '')[:10] == __import__('datetime').datetime.now().date().isoformat(), 'ERP shipment date must be today'
                 assert document.get('Согласован') is True and document.get('СкидкиРассчитаны') is True
                 if document['Комментарий'].endswith(ids['recover']) and not failed_post:
                     failed_post = True
@@ -1043,7 +1059,10 @@ def main():
         assert len(docs) == 1 and docs[0]['Posted'], name
         assert sum(event[1:] == (docs[0]['Ref_Key'], 'Post') for event in erp.posts) == 1, name
         assert docs[0]['СуммаДокумента'] == 78000
-        assert docs[0]['ДатаОтгрузки'] == docs[0]['Date']
+        from datetime import datetime
+        today = datetime.now().date().isoformat()
+        assert docs[0]['ДатаОтгрузки'] == today + 'T12:00:00'
+        assert all(row['ДатаОтгрузки'] == today + 'T12:00:00' for row in docs[0]['Товары'])
         assert docs[0]['Статус'] == 'КОбеспечению'
         assert docs[0]['ЦенаВключаетНДС'] is True
         assert docs[0]['НалогообложениеНДС'] == 'ПродажаОблагаетсяНДС'

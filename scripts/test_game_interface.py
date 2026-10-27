@@ -64,6 +64,15 @@ class GameInterfaceTests(unittest.TestCase):
         subsystem = yaml.safe_load((ROOT / 'Данные/Подсистема.yaml').read_text())
         self.assertIn('Управление', subsystem.get('Использование', []))
 
+    def test_cabinet_response_covers_phase_panel_properties(self):
+        schema = yaml.safe_load((ROOT / 'Данные/СостояниеКабинета.yaml').read_text())
+        fields = {f['Имя'] for f in schema['Поля']}
+        source = (ROOT / 'Управление/КабинетИгрока.xbsl').read_text()
+        phase_panel = source[source.index('метод ЭтапыРаунда('):]
+        self.assertLessEqual(set(re.findall(r'Ответ\.(\w+)', phase_panel)), fields)
+        response = (ROOT / 'Управление/КабинетыИгроков.xbsl').read_text()
+        self.assertIn('ТолькоРынок = Игра.ТолькоРынок', response)
+
     def test_client_catches_notify_or_propagate(self):
         count = 0
         for path in ROOT.rglob('*.yaml'):

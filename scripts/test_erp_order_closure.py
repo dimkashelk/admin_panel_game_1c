@@ -149,6 +149,7 @@ def fixture(name):
         error='ODATA_PAYMENT'
     if name == 'version-conflict': error='ODATA_HTTP'
     if name in ['lost-create-response','lost-post-response']: error='ODATA_HTTP'
+    if name in ['payment-create-failed','payment-post-failed']: error='ODATA_HTTP'
     if name == 'cash-not-reflected': error='ODATA_VERIFY'
     if name == 'lost-order-post-response': error='ODATA_HTTP'
     if name == 'foreign-currency': order['Валюта_Key']=uid('usd'); error='ODATA_ORDER'
@@ -156,7 +157,7 @@ def fixture(name):
         rows[SALE] = [dict(Ref_Key=uid('irrelevant-sale-'+str(i)), Posted=True, DeletionMark=False,
                           Организация_Key=org, Склад_Key=warehouse, Товары=[]) for i in range(105)] + rows[SALE]
     return dict(name=name, id=order_id, order=order_id, mappings=dict(zip(['CityRide','SportDrive'],item_ids)),
-                lines=lines, error=error, retry=name.startswith('lost-')), rows
+                lines=lines, error=error, retry=name.startswith('lost-') or name == 'version-conflict'), rows
 
 
 def main():
@@ -167,8 +168,9 @@ def main():
            'wrong-item','over-delivery','cancelled-line','changed-price','wrong-org','deleted-order','unposted-order',
            'manual-closed-unshipped','missing-settlement','wrong-settlement','ambiguous-bank','occupied-payment-guid',
            'version-conflict','lost-create-response','lost-post-response','lost-order-post-response',
+           'payment-create-failed','payment-post-failed',
            'cash-not-reflected','foreign-currency','paginated-shipments','manual-payment']
-    cases=[]; states={}; calls=[]; failed=set()
+    cases=[]; states={}; calls=[]; failed=set(); verified_payments=set()
     for name in names:
         case, rows=fixture(name); cases.append(case); states[name]=rows
     schema=json.loads((ROOT/'contracts/erp-order-closure-schema.json').read_text())['entities'][PAYMENT]
@@ -193,6 +195,8 @@ def main():
             if entity in [CASH,STOCK]:
                 key=re.search(r"Recorder='([^']+)'",path)[1]
                 record=next((r for r in rows[entity] if r['Recorder']==key),None)
+                if entity == CASH and record and sum(r['Сумма'] for r in record['RecordSet']) == 123000:
+                    verified_payments.add(name)
                 self.respond(record if record else {},200 if record else 404); return
             if "(guid'" in path:
                 key=path.split("(guid'",1)[1].split("'",1)[0]
@@ -201,10 +205,18 @@ def main():
                 if self.command=='GET': self.respond(doc); return
                 if self.command=='PATCH':
                     assert entity==ORDER and body=={'Статус':'Закрыт'}
-                    assert self.headers.get('If-Match')=='version-1'
-                    if name=='version-conflict': self.respond({},412); return
+                    if name not in verified_payments:
+                        self.respond({'error':'Order cannot close before confirmed payment'},409); return
+                    assert rows[PAYMENT][0]['Posted'] is True
+                    assert self.headers.get('If-Match')==doc['DataVersion']
+                    if name=='version-conflict' and name not in failed:
+                        failed.add(name); doc['DataVersion']='version-2'; self.respond({},412); return
                     doc.update(body); doc['DataVersion']='version-2'; self.respond(doc); return
                 assert path.endswith('/Post()') and body is None
+                if entity==ORDER:
+                    assert name in verified_payments, 'Order posted before payment verification'
+                if entity==PAYMENT and name=='payment-post-failed':
+                    self.respond({},503); return
                 doc['Posted']=True
                 if entity==ORDER and name=='lost-order-post-response' and name not in failed:
                     failed.add(name); self.respond({},503); return
@@ -220,6 +232,7 @@ def main():
                 self.respond({}); return
             if self.command=='POST':
                 assert entity==PAYMENT
+                if name=='payment-create-failed': self.respond({},503); return
                 assert set(body)<=set(schema['properties']), 'Receipt uses fields not confirmed in ERP'
                 for row in body['РасшифровкаПлатежа']:
                     assert set(row)<=set(schema['tables']['РасшифровкаПлатежа'])
@@ -254,11 +267,15 @@ def main():
     finally: server.shutdown(); server.server_close(); thread.join(timeout=2)
     for case in cases:
         writes=[c for c in calls if c[0]==case['name'] and c[1]!='GET']
-        if case['error'] and case['name'] not in ['lost-create-response','lost-post-response','lost-order-post-response','cash-not-reflected','version-conflict']:
+        if case['error'] and case['name'] not in ['lost-create-response','lost-post-response','lost-order-post-response',
+                                                'cash-not-reflected','version-conflict','payment-create-failed','payment-post-failed']:
             assert not writes, ('Validation failed after ERP writes',case['name'])
         creates=[c for c in writes if c[1]=='POST' and c[2]==PAYMENT]
         posts=[c for c in writes if c[1]=='POST' and c[2].startswith(PAYMENT+'(')]
         assert len(creates)<=1 and len(posts)<=1, ('Duplicate cash effect',case['name'])
+        if case['name'] in ['payment-create-failed','payment-post-failed','cash-not-reflected']:
+            assert states[case['name']][ORDER][0]['Статус']=='КОтгрузке', 'Unpaid order closed'
+            assert not any(c[2].startswith(ORDER+'(') for c in writes), 'Order changed after payment failure'
     print(f'PASS: {len(cases)} production closure cases; {len(calls)} local OData requests; no duplicate payments')
 
 if __name__=='__main__': main()
