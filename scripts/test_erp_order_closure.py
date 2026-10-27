@@ -19,7 +19,7 @@ from test_erp_pull import EXCHANGE, ROOT, method, uid
 
 NAMES = ('ЗакрытьИОплатитьЗаказOData', 'ПрочитатьОтборЗакрытия', 'КлючТовараЗакрытия',
          'ДвиженияДокументаЗакрытия', 'ПроверитьПолнуюОтгрузкуЗаказа', 'ПоляОплатыЗаказа',
-         'ДобавитьЧастьОплаты', 'ПроверитьПоступлениеЗаказа', 'ПроверитьДвиженияОплатыЗаказа',
+         'ДобавитьЧастьОплаты', 'ПроверитьПоступлениеЗаказа', 'ПервоеРасхождениеПоступления', 'ПроверитьДвиженияОплатыЗаказа',
          'ПроверитьУсловияЗакрытияЗаказа', 'ПроверитьОтсутствиеДругойОплаты', 'ПрочитатьСтатусыЗаказовOData', 'СостояниеЗаказаERP')
 ZERO = '00000000-0000-0000-0000-000000000000'
 ORDER = 'Document_ЗаказКлиента'
@@ -35,6 +35,12 @@ DRIVER = r'''
     ;
 ;
 метод Скрипт(Адрес: Строка, ТекстСлучаев: Строка): Число
+    ТребоватьПроверку(ПервоеРасхождениеПоступления({"Сумма": "123.00"}, {"Сумма": 123}) == "", "Numeric representation mismatch")
+    ТребоватьПроверку(ПервоеРасхождениеПоступления({"Date": "2026-10-15T00:00:00"}, {"Date": "2026-10-15T18:00:00"}) == "Date", "Missing receipt header diagnostic")
+    ТребоватьПроверку(ПервоеРасхождениеПоступления({"РасшифровкаПлатежа": <Объект?>[{"Сумма": 5}]},
+        {"РасшифровкаПлатежа": <Объект?>[{"Сумма": 10}]}) == "РасшифровкаПлатежа[1].Сумма", "Missing receipt line diagnostic")
+    ТребоватьПроверку(ПервоеРасхождениеПоступления({"РасшифровкаПлатежа": <Объект?>[]},
+        {"РасшифровкаПлатежа": <Объект?>[{}]}) == "РасшифровкаПлатежа.КоличествоСтрок", "Missing receipt count diagnostic")
     для Значение из МассивJson(Прочитать(ТекстСлучаев).Получить("cases"))
         знч Случай = ОбъектJson(Значение)
         знч Имя = СтрокаJson(Случай, "name")
@@ -150,6 +156,7 @@ def fixture(name):
     if name == 'version-conflict': error='ODATA_HTTP'
     if name in ['lost-create-response','lost-post-response']: error='ODATA_HTTP'
     if name in ['payment-create-failed','payment-post-failed']: error='ODATA_HTTP'
+    if name in ['changed-receipt-line-article','deleted-receipt']: error='ODATA_CONFLICT'
     if name == 'cash-not-reflected': error='ODATA_VERIFY'
     if name == 'lost-order-post-response': error='ODATA_HTTP'
     if name == 'foreign-currency': order['Валюта_Key']=uid('usd'); error='ODATA_ORDER'
@@ -168,7 +175,7 @@ def main():
            'wrong-item','over-delivery','cancelled-line','changed-price','wrong-org','deleted-order','unposted-order',
            'manual-closed-unshipped','missing-settlement','wrong-settlement','ambiguous-bank','occupied-payment-guid',
            'version-conflict','lost-create-response','lost-post-response','lost-order-post-response',
-           'payment-create-failed','payment-post-failed',
+           'payment-create-failed','payment-post-failed','changed-receipt-line-article','deleted-receipt',
            'cash-not-reflected','foreign-currency','paginated-shipments','manual-payment']
     cases=[]; states={}; calls=[]; failed=set(); verified_payments=set()
     for name in names:
@@ -240,7 +247,14 @@ def main():
                 assert body['ДатаПроведенияБанком']=='2026-10-15T00:00:00'
                 assert body['ДатаВходящегоДокумента']=='2026-10-15T00:00:00'
                 assert not rows[PAYMENT], 'Duplicate payment created'
-                rows[PAYMENT].append({**body,'Number':'PAY-1','Posted':False,'DeletionMark':False})
+                # Observed in ERP 1551015, receipt 0000-000001: this operation keeps
+                # the cash-flow article in payment lines and clears the header.
+                created={**body,'Number':'PAY-1','Posted':False,'DeletionMark':False,
+                         'СтатьяДвиженияДенежныхСредств_Key':ZERO}
+                if name=='changed-receipt-line-article':
+                    created['РасшифровкаПлатежа'][0]['СтатьяДвиженияДенежныхСредств_Key']=uid('wrong-article')
+                if name=='deleted-receipt': created['DeletionMark']=True
+                rows[PAYMENT].append(created)
                 if name=='lost-create-response' and name not in failed:
                     failed.add(name); self.respond({},503); return
                 self.respond(rows[PAYMENT][-1],201); return
@@ -268,14 +282,18 @@ def main():
     for case in cases:
         writes=[c for c in calls if c[0]==case['name'] and c[1]!='GET']
         if case['error'] and case['name'] not in ['lost-create-response','lost-post-response','lost-order-post-response',
-                                                'cash-not-reflected','version-conflict','payment-create-failed','payment-post-failed']:
+                                                'cash-not-reflected','version-conflict','payment-create-failed','payment-post-failed',
+                                                'changed-receipt-line-article','deleted-receipt']:
             assert not writes, ('Validation failed after ERP writes',case['name'])
         creates=[c for c in writes if c[1]=='POST' and c[2]==PAYMENT]
         posts=[c for c in writes if c[1]=='POST' and c[2].startswith(PAYMENT+'(')]
         assert len(creates)<=1 and len(posts)<=1, ('Duplicate cash effect',case['name'])
-        if case['name'] in ['payment-create-failed','payment-post-failed','cash-not-reflected']:
+        if case['name'] in ['payment-create-failed','payment-post-failed','cash-not-reflected',
+                            'changed-receipt-line-article','deleted-receipt']:
             assert states[case['name']][ORDER][0]['Статус']=='КОтгрузке', 'Unpaid order closed'
             assert not any(c[2].startswith(ORDER+'(') for c in writes), 'Order changed after payment failure'
+        if case['name'] in ['changed-receipt-line-article','deleted-receipt']:
+            assert not posts, 'Invalid receipt posted'
     print(f'PASS: {len(cases)} production closure cases; {len(calls)} local OData requests; no duplicate payments')
 
 if __name__=='__main__': main()
