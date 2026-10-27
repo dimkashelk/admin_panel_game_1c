@@ -61,6 +61,7 @@ def source():
                    'метод ПроверитьСобытиеТеста(Игра: ИграНастройкиТеста?, Раунд: РаундНастройкиТеста?, Вид: Строка)', event)
     event = event.replace('ЭтоНовый()', 'Истина').replace('Игра!.ЗагрузитьОбъект()!', 'Игра!')
     event = event.replace('Раунд!.ЗагрузитьОбъект()!', 'Раунд!')
+    event = event.replace('Раунд!.Игра == Игра', 'Раунд!.Игра.Ид == Игра!.Ид')
     body += event.replace('ПроверкиДанных.Требовать', 'ТребоватьПроверку').replace('СостоянияИгры.Черновик', '"draft"')
     protocol = (EXCHANGE / 'ПротоколERP.xbsl').read_text()
     protocol = protocol.split('@ВПроекте\nметод Требовать', 1)[0] + '\n'.join(
@@ -111,6 +112,7 @@ DRIVER = r'''
 ;
 метод НоваяИграНастройкиТеста(): ИграНастройкиТеста
     знч Игра = новый ИграНастройкиТеста()
+    Игра.Ид = новый Ууид()
     знч Команда = новый КомандаНастройкиТеста(Игра = Игра, ПодключениеERP = новый БазаНастройкиТеста())
     Игра.Команды = [Команда]
     возврат Игра
@@ -169,12 +171,36 @@ DRIVER = r'''
         "Concurrent setup ignored lease")
     Команда.НачалоНастройкиERP = Момент.Сейчас() - 31м
     ТребоватьПроверку(ЗарезервироватьНастройкуБазы(Игра, Команда) == Неопределено, "Expired worker restarted without explicit retry")
+    ПроверитьИсториюПодготовки()
     ПроверитьНаблюдательНастройки()
     ПроверитьПланировщикНастройки()
     Игра.Статус = "running"
     ТребоватьПроверку(ЗарезервироватьНастройкуБазы(Игра, Команда) == Неопределено, "Active game was reconfigured")
-    Консоль.Записать("PASS: production background setup queue, apply/read-only, verified mappings, failure/retry, stale/parallel guards, crash recovery, launch gate and persistent status notifications")
+    Консоль.Записать("PASS: production background setup queue, apply/read-only, verified mappings, failure/retry, stale/parallel guards, scheduler reconciliation/timeout/retry, pre-round event validation, launch gate and persistent status notifications")
     возврат 0
+;
+метод ПроверитьИсториюПодготовки()
+    знч Игра = НоваяИграНастройкиТеста()
+    ПроверитьСобытиеТеста(Игра, Неопределено, "НастройкаERPЗавершена")
+    ПроверитьСобытиеТеста(Игра, Неопределено, "ОшибкаНастройкиERP")
+    для Вариант из ["ordinary", "missing-game", "foreign-round", "running"]
+        пер Отклонено = Ложь
+        попытка
+            если Вариант == "ordinary"
+                ПроверитьСобытиеТеста(Игра, Неопределено, "СтартРаунда")
+            иначе если Вариант == "missing-game"
+                ПроверитьСобытиеТеста(Неопределено, Неопределено, "ОшибкаНастройкиERP")
+            иначе если Вариант == "foreign-round"
+                ПроверитьСобытиеТеста(Игра, новый РаундНастройкиТеста(Игра = НоваяИграНастройкиТеста()), "ОшибкаНастройкиERP")
+            иначе
+                Игра.Статус = "running"
+                ПроверитьСобытиеТеста(Игра, Неопределено, "ОшибкаНастройкиERP")
+            ;
+        поймать Ошибка: Исключение
+            Отклонено = Истина
+        ;
+        ТребоватьПроверку(Отклонено, "Round history validation weakened: " + Вариант)
+    ;
 ;
 метод ПроверитьНаблюдательНастройки()
     для Вариант из ["missing", "failed", "done", "cancelled", "timeout", "running", "pending", "queue-timeout", "legacy"]
@@ -240,6 +266,7 @@ DRIVER = r'''
         "Scheduler error was hidden or blocked other teams")
 ;
 структура ИграНастройкиТеста
+    пер Ид: Ууид
     пер Доступ: Булево = Истина
     пер ПометкаУдаления: Булево = Ложь
     пер Статус: Строка = "draft"
