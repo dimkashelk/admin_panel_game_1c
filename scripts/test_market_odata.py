@@ -28,6 +28,45 @@ from test_cabinet_refresh import cabinet_refresh_source
 from test_market_order_status import status_source, add_status_fixtures
 
 DRIVER = r'''
+метод ПроверитьСоглашенияЗаказовERP()
+    знч Ссылки = <Строка, Строка>{"organization": "org", "finished_goods": "stock", "rub": "rub",
+        "customer": "buyer", "counterparty_customer": "counterparty"}
+    знч Соглашение = <Строка, Объект?>{"Организация_Key": "org", "Склад_Key": "stock", "Валюта_Key": "rub", "Типовое": Истина}
+    ПроверитьСоглашениеЗаказаERP(Соглашение, Ссылки)
+    для ПустаяСсылка из <Объект?>[Неопределено, "", "00000000-0000-0000-0000-000000000000"]
+        Соглашение.Вставить("Партнер_Key", ПустаяСсылка)
+        Соглашение.Вставить("Контрагент_Key", ПустаяСсылка)
+        ПроверитьСоглашениеЗаказаERP(Соглашение, Ссылки)
+    ;
+    для Типовое из [Истина, Ложь]
+        Соглашение.Вставить("Типовое", Типовое)
+        Соглашение.Вставить("Партнер_Key", "buyer")
+        Соглашение.Вставить("Контрагент_Key", "counterparty")
+        ПроверитьСоглашениеЗаказаERP(Соглашение, Ссылки)
+        для Поле из ["Организация_Key", "Склад_Key", "Валюта_Key", "Партнер_Key", "Контрагент_Key"]
+            знч Исходное = Соглашение.Получить(Поле)
+            для ЧужаяСсылка из <Объект?>["foreign", Неопределено, "", "00000000-0000-0000-0000-000000000000"]
+                если Типовое и ["Партнер_Key", "Контрагент_Key"].Содержит(Поле) и ЧужаяСсылка != "foreign"
+                    продолжить
+                ;
+                Соглашение.Вставить(Поле, ЧужаяСсылка)
+                пер Отклонено = Ложь
+                попытка
+                    ПроверитьСоглашениеЗаказаERP(Соглашение, Ссылки)
+                поймать Сбой: Ошибка
+                    ТребоватьПроверку(Сбой.Код == "ODATA_MAPPING" и Сбой.Представление().Содержит(Поле), "Lost agreement field diagnostic")
+                    Отклонено = Истина
+                ;
+                ТребоватьПроверку(Отклонено, "Foreign or incomplete agreement accepted: " + Поле)
+                Соглашение.Вставить(Поле, Исходное)
+            ;
+        ;
+    ;
+    Соглашение.Удалить("Типовое")
+    ПроверитьСоглашениеЗаказаERP(Соглашение, Ссылки)
+    Консоль.Записать("PASS: standard and individual sales agreements; empty buyer references only for standard; foreign/missing organization, stock, currency and individual buyer rejected with field diagnostic")
+;
+
 метод ПроверитьПоискНастроекERP(Адрес: Строка)
     знч Соединение = КлиентHttp.СБазовымUrl(Адрес).САутентификацией(новый АутентификацияHttp("test-user", "test-password"))
     знч Товар = Найти(Соединение, "Catalog_Номенклатура", {"Description": "Городской велосипед", "DeletionMark": Ложь})!
@@ -51,6 +90,7 @@ DRIVER = r'''
 ;
 
 метод Скрипт(АдресТеста: Строка): Число
+    ПроверитьСоглашенияЗаказовERP()
     знч ПерваяКоманда = новый Ууид("11111111-2222-4333-8444-555555555555")
     знч ВтораяКоманда = новый Ууид("99999999-2222-4333-8444-555555555555")
     ТребоватьПроверку(КлючФоновогоЗадания(ПерваяКоманда).Длина() <= 60
@@ -894,7 +934,7 @@ def main():
     body = '\n'.join([protocol, method((EXCHANGE / 'КлиентERP.xbsl').read_text(), 'КлючФоновогоЗадания'), (EXCHANGE / 'КонтрактERP.xbsl').read_text(),
                       method((EXCHANGE / 'ПрофильНастройкиOData.xbsl').read_text(), 'Получить').replace('метод Получить(', 'метод ПолучитьПрофиль('),
                       method((EXCHANGE / 'ПротоколERP.xbsl').read_text(), 'Деньги'),
-                      *(method(odata, name) for name in ('СоздатьЗаказПоСтрокамOData', 'ПроверитьСтрокиЗаказаERP',
+                      *(method(odata, name) for name in ('СоздатьЗаказПоСтрокамOData', 'ПроверитьСоглашениеЗаказаERP', 'ПроверитьСтрокиЗаказаERP',
                         'ТоварыЗаказаERP', 'НайтиНастройкуДляОбмена', 'Найти', 'Разрешить', 'Совпадает', 'ПровестиДокумент',
                         'ЗапросOData', 'ПрочитатьВсе', 'ОстатокПродукта', 'СоединитьСтроки', 'ПрочитатьОстаткиРынкаOData', 'ПрочитатьПрайсЛистOData', 'ПоследняяЦена', 'ПроверитьДвиженияОплатыЗаказа', 'ДвиженияДокументаЗакрытия')),
                       method(summary, 'КомандаГотова'), method(summary, 'ПричинаОжидания'), lifecycle_source(),
@@ -916,6 +956,11 @@ def main():
     body = body.replace('        Требовать(Значение >=', '        ТребоватьПроверку(Значение >=').replace('    Требовать(Макс', '    ТребоватьПроверку(Макс')
     erp = ERP()
     apply(erp, PROFILE)
+    # Real OData returns empty GUIDs for buyers of a standard agreement.
+    agreement = erp.rows['Catalog_СоглашенияСКлиентами'][0]
+    assert agreement['Типовое'] is True
+    agreement.update(Партнер_Key='00000000-0000-0000-0000-000000000000',
+                     Контрагент_Key='00000000-0000-0000-0000-000000000000')
     opening_prices = erp.rows['Document_УстановкаЦенНоменклатуры'][0]
     sport = next(row for row in opening_prices['Товары2_5'] if row['Цена'] == 45000)
     sport = copy.deepcopy(sport)
@@ -1049,6 +1094,10 @@ def main():
         thread.join(timeout=2)
     documents = [d for d in erp.rows['Document_ЗаказКлиента'] if not d.get("StatusTest")]
     assert len(documents) == 8, 'Retry created a duplicate or future-production order is missing'
+    buyer = next(r for r in erp.rows['Catalog_Партнеры'] if r['Description'] == 'Рынок')['Ref_Key']
+    counterparty = next(r for r in erp.rows['Catalog_Контрагенты'] if r.get('Партнер_Key') == buyer)['Ref_Key']
+    assert all(d['Партнер_Key'] == buyer and d['Контрагент_Key'] == counterparty
+               and d['Соглашение_Key'] == agreement['Ref_Key'] for d in documents)
     multi = next(d for d in documents if d['Комментарий'].endswith(ids['multi']))
     assert multi['Posted'] and len(multi['Товары']) == 2 and multi['СуммаДокумента'] == 160000
     assert sum(d['Комментарий'].endswith(ids['multi']) for d in documents) == 1
