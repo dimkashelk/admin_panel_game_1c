@@ -83,6 +83,37 @@ PUBLICATION_DRIVER = r'''
         Отклонено = Истина
     ;
     Требовать(Отклонено и Игра.Заказы.Размер() == 3, "Publication retry duplicated orders")
+    // One team has no eligible price; another has one overpriced model.
+    Игра.ТекущийРаунд!.ОкончательныйРасчет = Неопределено
+    Игра.Заказы = []
+    Игра.Расчеты = []
+    Игра.Входы = []
+    Игра.Команды[0].ДанныеРынкаOData = Json(<Строка, Объект?>{"offers": <Объект?>[
+        {"productCode": "a", "price": "1000.01", "availableQuantity": 10},
+        {"productCode": "b", "price": "1001.00", "availableQuantity": 10}]})
+    Игра.Команды[1].ДанныеРынкаOData = Json(<Строка, Объект?>{"offers": <Объект?>[
+        {"productCode": "a", "price": "100.00", "availableQuantity": 10},
+        {"productCode": "b", "price": "1001.00", "availableQuantity": 10}]})
+    СоздатьПерсональныеЗаказы(Игра, [Параметр("a", 10), Параметр("b", 10)])
+    Требовать(Игра.Заказы.Размер() == 2, "All-expensive team caused a failure or empty ERP order")
+    для Заказ из Игра.Заказы
+        Требовать(Заказ.Участник!.Ид != Игра.Команды[0].Ид, "Empty order was published")
+        для Значение из МассивJson(Прочитать(Заказ.СтрокиЗаказаJson).Получить("lines"))
+            знч Строка = ОбъектJson(Значение)
+            Требовать(ЧислоJson(Строка, "quantity") > 0
+                и новый Число(СтрокаJson(Строка, "unitPrice")) <= 1000, "Ineligible line sent to ERP")
+        ;
+    ;
+    Требовать(Игра.Расчеты[0].Распределение.Размер() == 6, "Zero-demand lines lost from frozen allocation")
+    Игра.ТекущийРаунд!.ОкончательныйРасчет = Неопределено
+    Игра.Заказы = []
+    Игра.Расчеты = []
+    для Команда из Игра.Команды
+        Команда.ДанныеРынкаOData = Игра.Команды[0].ДанныеРынкаOData
+    ;
+    СоздатьПерсональныеЗаказы(Игра, [Параметр("a", 10), Параметр("b", 10)])
+    Требовать(Игра.Заказы.Пусто() и Игра.ТекущийРаунд!.ОкончательныйРасчет != Неопределено,
+        "All-expensive market blocked the round or published empty ERP orders")
     Консоль.Записать("PASS: production publisher: one private multi-line order per team, frozen totals and description, stable IDs, archived sources, duplicate-publication guard")
 ;
 структура СсылкаПубликацииЦен

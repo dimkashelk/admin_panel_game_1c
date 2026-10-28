@@ -80,12 +80,19 @@ DRIVER = r'''
         ПрайсЛист = {"offers": <Объект?>[{"productCode": "CityRide", "price": "100.00", "availableQuantity": 2}]})
 ;
 метод ПроверитьЗавершениеИгроком()
-    для Случай из ["low", "high", "zero", "fractional", "missing", "duplicate", "negative-stock", "fractional-stock",
+    для Цена из ["50.00", "200.00", "200.01", "1000000.00"]
+        знч КомандаСЦеной = КомандаДляЗавершенияТеста()
+        КомандаСЦеной.ПрайсЛист = {"offers": <Объект?>[{"productCode": "CityRide", "price": Цена, "availableQuantity": 2}]}
+        ЗавершитьЭтапЗавершенияТеста(КомандаСЦеной, "phase", "done")
+        ТребоватьПроверку(КомандаСЦеной.Завершено и КомандаСЦеной.Заявлений == 1,
+            "Valid/high price blocked stage completion")
+    ;
+    для Случай из ["low", "zero", "fractional", "missing", "duplicate", "negative-stock", "fractional-stock",
         "no-stock", "read-error", "token", "version", "orders", "access", "paused", "closed", "preparation", "next-round-no-stock"]
         знч Команда = КомандаДляЗавершенияТеста()
         знч Строка = ОбъектJson(МассивJson(Команда.ПрайсЛист.Получить("offers"))[0])
-        если Случай == "low" или Случай == "high" или Случай == "zero" или Случай == "fractional"
-            Строка.Вставить("price", Случай == "low" ? "49.00" : (Случай == "high" ? "201.00" : (Случай == "zero" ? "0.00" : "100.001")))
+        если Случай == "low" или Случай == "zero" или Случай == "fractional"
+            Строка.Вставить("price", Случай == "low" ? "49.00" : (Случай == "zero" ? "0.00" : "100.001"))
         иначе если Случай == "missing"
             Команда.ПрайсЛист.Вставить("offers", <Объект?>[])
         иначе если Случай == "duplicate"
@@ -125,7 +132,7 @@ DRIVER = r'''
         ТребоватьПроверку(Причина != "" и не Команда.Завершено и Команда.Заявлений == 0 и Команда.ЗаписейЦен == 0,
             "Invalid completion persisted: " + Случай)
         если Случай == "low"
-            ТребоватьПроверку(Причина.Содержит("49") и Причина.Содержит("50–200"), "Warning lost actual price and allowed range")
+            ТребоватьПроверку(Причина.Содержит("49") и Причина.Содержит("не ниже 50"), "Warning lost actual price and allowed range")
         ;
     ;
     для Цена из ["50.00", "200.00"]

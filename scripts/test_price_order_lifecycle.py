@@ -62,7 +62,13 @@ COLLECTION_DRIVER = r'''
     ТребоватьПроверку(Команда.ТокенРынкаOData == "next-token" и Команда.ВремяРынкаOData == Неопределено, "Old price snapshot reused")
     ТребоватьПроверку(Повтор.Получить("priceList") == Истина и Повтор.Получить("readStock") == Истина,
         "Next sales stage did not request fresh ERP prices and supply")
-    знч Неверные = Json(<Строка, Объект?>{"offers": <Объект?>[{"productCode": "CityRide", "price": "1000.00", "availableQuantity": 2}]})
+    знч ВысокиеЦены = Json(<Строка, Объект?>{"offers": <Объект?>[{"productCode": "CityRide", "price": "1000.00", "availableQuantity": 2}]})
+    СохранитьОстаткиРынкаЦенТеста(Игра, Команда, "next-token", Момент.Сейчас(), ВысокиеЦены, "")
+    ТребоватьПроверку(Команда.ДанныеРынкаOData == ВысокиеЦены
+        и ПричинаОжиданияПрайсЛистаЦенТеста(Игра, Команда) == "", "High ERP price was rejected")
+    Команда.ДанныеРынкаOData = ""
+    Команда.ВремяРынкаOData = Неопределено
+    знч Неверные = Json(<Строка, Объект?>{"offers": <Объект?>[{"productCode": "CityRide", "price": "49.00", "availableQuantity": 2}]})
     СохранитьОстаткиРынкаЦенТеста(Игра, Команда, "next-token", Момент.Сейчас(), Неверные, "")
     ТребоватьПроверку(Команда.ДанныеРынкаOData == "" и ПричинаОжиданияПрайсЛистаЦенТеста(Игра, Команда) != "", "Invalid price snapshot accepted/frozen")
     Команда.СледующееЧтениеРынкаOData = Момент.Сейчас() - 1с
