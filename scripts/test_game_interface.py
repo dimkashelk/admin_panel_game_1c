@@ -40,7 +40,7 @@ class GameInterfaceTests(unittest.TestCase):
         self.assertIn('СозданнаяИгра = УправлениеИгрой.СоздатьИгру(', source)
 
     def test_all_handlers_and_component_references_resolve(self):
-        for name in ('НастройкаИгры', 'ИгрыФормаСписка', 'ГлавнаяСтраница'):
+        for name in ('НастройкаИгры', 'ИгрыФормаСписка', 'ГлавнаяСтраница', 'АналитикаРынкаФорма'):
             path = next(ROOT.rglob(name + '.yaml'))
             form = yaml.safe_load(path.read_text())
             source = path.with_suffix('.xbsl').read_text()
@@ -72,6 +72,24 @@ class GameInterfaceTests(unittest.TestCase):
         self.assertLessEqual(set(re.findall(r'Ответ\.(\w+)', phase_panel)), fields)
         response = (ROOT / 'Управление/КабинетыИгроков.xbsl').read_text()
         self.assertIn('ТолькоРынок = Игра.ТолькоРынок', response)
+
+    def test_market_analytics_player_route_and_columns(self):
+        app = yaml.safe_load((ROOT / 'Управление/Приложение.yaml').read_text())
+        route = next(n for n in nodes(app) if n.get('ТипФормы') == 'АналитикаРынкаФорма')
+        self.assertNotIn('Видимость', route)  # available to assigned players, not only hosts
+        form = yaml.safe_load((ROOT / 'Аналитика/АналитикаРынкаФорма.yaml').read_text())
+        schema = yaml.safe_load((ROOT / 'Аналитика/СтрокаАналитикиРынка.yaml').read_text())
+        fields = {f['Имя'] for f in schema['Поля']}
+        for column in nodes(form):
+            if 'ПолеЗначения' in column:
+                self.assertIn(column['ПолеЗначения'], fields)
+                self.assertTrue(column['ТолькоЧтение'])
+        source = (ROOT / 'Аналитика/АналитикаРынка.xbsl').read_text()
+        self.assertLess(source.index('ДоступКабинета.ПроверитьИгрока(Участник)'),
+                        source.index('исп КонтекстДоступа.Привилегированный()'))
+        self.assertIn('ГДЕ Игра == %СсылкаИгры И ЗачтенЗакрытым', source)
+        self.assertIn('ГДЕ Расчет.Игра == %СсылкаИгры И Отгружено > 0', source)
+        self.assertNotIn('КонтрольДоступа', schema)  # DTO carries no raw entity access
 
     def test_client_catches_notify_or_propagate(self):
         count = 0

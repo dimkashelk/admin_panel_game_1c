@@ -29,7 +29,7 @@ def publication_source():
     protocol = re.sub(r'@ВПроекте\nметод Требовать\(.*?\n;\n', '', protocol, flags=re.S)
     body += '\n' + protocol + '\n' + method((EXCHANGE / 'ПротоколERP.xbsl').read_text(), 'Деньги')
     body = body.replace('новый РасчетПубликацииЦен(Ид = ИдРасчета(Раунд.Ссылка))', 'новый РасчетПубликацииЦен(Ид = ИдРасчета(Раунд.Ссылка), Ссылка = Раунд.Ссылка, Алгоритм = Игра.Алгоритм)')
-    body += PUBLICATION_DRIVER
+    body += '\n' + method(source, 'СнимокСебестоимости').replace('ПротоколERP.', '') + PUBLICATION_DRIVER
     return re.sub(r'^импорт .+\n|^@[^\n]+\n', '', body, flags=re.M)
 
 
@@ -55,6 +55,11 @@ PUBLICATION_DRIVER = r'''
                 {"productCode": "a", "price": "100.00", "availableQuantity": 10},
                 {"productCode": "b", "price": "150.00", "availableQuantity": 10}]})))
     ;
+    для Команда из Игра.Команды
+        знч ПрайсЛист = Прочитать(Команда.ДанныеРынкаOData)
+        ПрайсЛист.Вставить("costBasis", <Строка, Объект?>{"costs": <Строка, Объект?>{"a": 50}, "includesVAT": Истина})
+        Команда.ДанныеРынкаOData = Json(ПрайсЛист)
+    ;
     СоздатьПерсональныеЗаказы(Игра, [Параметр("b", 10), Параметр("a", 10)])
     Требовать(Игра.Заказы.Размер() == 3 и Игра.Расчеты.Размер() == 1 и Игра.Входы.Размер() == 1,
         "Publisher did not create exactly one order per team and one frozen allocation")
@@ -62,6 +67,8 @@ PUBLICATION_DRIVER = r'''
     для Заказ из Игра.Заказы
         Требовать(Заказ.Количество >= 1 и Заказ.СуммаЗаказа > 0 и Заказ.ОписаниеЗаказа != "", "Empty/payloadless personal order")
         Требовать(не Владельцы.Содержит(Заказ.Участник!.Ид) и Заказ.Статус == "Назначен", "Duplicate team or public order")
+        Требовать(ЧислоJson(ОбъектJson(Прочитать(Заказ.СебестоимостьДляАналитики).Получить("costs")), "a") == 50,
+            "Personal order did not freeze the team's cost from the approved price list")
         Владельцы.Добавить(Заказ.Участник!.Ид)
         Требовать(Заказ.СтрокиЗаказаJson.Длина() <= 1000 и Заказ.ОписаниеЗаказа.Длина() <= 1000, "Order payload exceeds Element string field limit")
         знч Строки = МассивJson(Прочитать(Заказ.СтрокиЗаказаJson).Получить("lines"))
@@ -178,6 +185,7 @@ PUBLICATION_DRIVER = r'''
     пер РасчетнаяВыручка: Число
 ;
 структура ЗаказПубликацииЦен
+    пер СебестоимостьДляАналитики: Строка
     пер Ид: Ууид
     пер Игра: СсылкаПубликацииЦен
     пер Раунд: СсылкаПубликацииЦен
