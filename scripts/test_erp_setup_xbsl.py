@@ -16,7 +16,7 @@ import threading
 from urllib.parse import parse_qs, unquote, urlsplit
 
 from test_erp_pull import EXCHANGE, method
-from test_erp_setup import ERP
+from test_erp_setup import ERP, PROFILE
 from setup_erp_odata import SetupError
 
 
@@ -42,6 +42,9 @@ DRIVER = r'''
 метод Скрипт(Адрес: Строка): Число
     знч План = Прочитать(Подготовить(Адрес, "test-user", "test-password", Ложь))
     Требовать(План.Получить("success") == Истина, "TEST", Json(План))
+    Требовать(ПредставитьОтчет(План).Содержит("ИспользоватьПооперационноеУправление"), "TEST", "Settings changes missing from preview")
+    знч СбойНастройки = Прочитать(Подготовить(Адрес, "test-user", "test-password", Истина))
+    Требовать(СбойНастройки.Получить("success") == Ложь и СбойНастройки.Получить("step") == "department", "TEST", Json(СбойНастройки))
     знч Сбой = Прочитать(Подготовить(Адрес, "test-user", "test-password", Истина))
     Требовать(Сбой.Получить("success") == Ложь и Сбой.Получить("step") == "initial_supplier_debt", "TEST", Json(Сбой))
     знч Повтор = Прочитать(Подготовить(Адрес, "test-user", "test-password", Истина))
@@ -56,7 +59,7 @@ DRIVER = r'''
     знч ПроверкаГотовой = Прочитать(Подготовить(Адрес, "test-user", "test-password", Ложь))
     Требовать(ПроверкаГотовой.Получить("success") == Истина и ПроверкаГотовой.Получить("requiresChanges") == Ложь,
         "TEST", "Ready ERP still requires changes: " + Json(ПроверкаГотовой))
-    Консоль.Записать("PASS: original XBSL setup, lost posting response, repeat without duplicate stock/cash/debt, register verification")
+    Консоль.Записать("PASS: original XBSL settings alignment, preview, lost PATCH and posting responses, repeat without duplicate stock/cash/debt, register verification")
     возврат 0
 ;
 '''
@@ -71,7 +74,20 @@ def main():
     erp = ERP()
     item = erp.add('Catalog_Номенклатура', {'Description': 'Городской велосипед', 'Артикул': 'CITY-001',
         'НаименованиеПолное': 'Велосипед городской учебный',
-        'ВидНоменклатуры_Key': '00000000-0000-0000-0000-000000000000'})
+        'ВидНоменклатуры_Key': '00000000-0000-0000-0000-000000000000',
+        'ИспользованиеХарактеристик': 'ИндивидуальныеДляНоменклатуры'})
+    department = erp.add('Catalog_СтруктураПредприятия', {'Description': 'Цех сборки',
+        'ПроизводственноеПодразделение': False, 'ИспользоватьПооперационноеУправление': True,
+        'ИспользоватьПооперационноеПланирование': True, 'ИнтервалПланирования': 'Неделя',
+        'Комментарий': 'Существующий учебный цех'})
+    warehouse = erp.add('Catalog_Склады', {'Description': 'Закупки',
+        'ИспользоватьОрдернуюСхемуПриПоступлении': True, 'ЦеховаяКладовая': True})
+    spec_name = next(n['fields']['Description'] for n in PROFILE['nodes'] if n['key'] == 'spec_CityRide')
+    spec = erp.add('Catalog_РесурсныеСпецификации', {'Description': spec_name,
+        'Описание': 'Настроено вручную', 'МатериалыИУслуги': [], 'Статус': 'НеДействует'})
+    agreement = erp.add('Catalog_СоглашенияСКлиентами', {'Description': 'Продажи велосипедов',
+        'Комментарий': 'Настроено вручную', 'Типовое': False, 'ЦенаВключаетНДС': False})
+    erp.fail_after_patch = 'Catalog_СтруктураПредприятия'
     erp.fail_after_post = 'Document_ВводОстатков'
     requests = []
 
@@ -186,6 +202,16 @@ def main():
     saved_item = erp.read('Catalog_Номенклатура', item['Ref_Key'])
     assert saved_item['Артикул'] == 'CITY-001'
     assert saved_item['НаименованиеПолное'] == 'Велосипед городской учебный'
+    assert saved_item['ИспользованиеХарактеристик'] == 'НеИспользовать'
+    saved_department = erp.read('Catalog_СтруктураПредприятия', department['Ref_Key'])
+    assert saved_department['ИспользоватьПооперационноеУправление'] is False
+    assert saved_department['ИспользоватьПооперационноеПланирование'] is False
+    assert saved_department['ИнтервалПланирования'] == 'День'
+    assert saved_department['Комментарий'] == 'Существующий учебный цех'
+    assert sum(p[:2] == ('Catalog_СтруктураПредприятия', department['Ref_Key']) for p in erp.patches) == 1
+    assert erp.read('Catalog_Склады', warehouse['Ref_Key'])['ИспользоватьОрдернуюСхемуПриПоступлении'] is False
+    assert len(erp.read('Catalog_РесурсныеСпецификации', spec['Ref_Key'])['МатериалыИУслуги']) == 5
+    assert erp.read('Catalog_СоглашенияСКлиентами', agreement['Ref_Key'])['Типовое'] is True
     stock = erp.rows.get('Document_ВводОстатковТоваров', [])
     if args.scenario_stock != 'full':
         assert len(erp.rows['Catalog_Номенклатура']) == 15, 'Missing nomenclature without opening stock'

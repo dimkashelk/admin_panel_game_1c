@@ -108,8 +108,8 @@ def checked_fields(node, fields):
     return expected
 
 
-def can_fill(actual, expected):
-    return all(equivalent(actual.get(k), v) or actual.get(k) in (None, '', ZERO)
+def can_fill(actual, expected, update_existing=False):
+    return update_existing or all(equivalent(actual.get(k), v) or actual.get(k) in (None, '', ZERO)
                for k, v in expected.items())
 
 
@@ -185,6 +185,7 @@ def plan(client, profile, options=None):
         except ValueError:raise SetupError('Дата настройки: ожидается YYYY-MM-DDTHH:MM:SS') from None
         refs['specStartDate'] = refs['setupDate'][:4] + '-01-01T00:00:00'
     found={}
+    update_existing = profile.get('updateExistingSettings') is True
     for n in profile['nodes']:
         fields = resolve(n['fields'],refs)
         # $select is validated by the server even when the entity set is empty.
@@ -195,9 +196,10 @@ def plan(client, profile, options=None):
         if n['mode']=='finish':
             refs[n['key']]=refs[n['target']]
             old=found.get(n['target'])
-            if old and not equivalent(old,fields) and old.get(n.get('ownershipField','Описание'))!='BICYCLE_SIMPLE/1.0 OData setup':
+            if old and not equivalent(old,fields) and not update_existing and old.get(n.get('ownershipField','Описание'))!='BICYCLE_SIMPLE/1.0 OData setup':
                 raise SetupError(n['key']+': чужую запись нельзя автоматически менять')
-            report.append(dict(key=n['key'], action='finish', entity=n['entity'],refKey=refs[n['key']],fields=fields))
+            report.append(dict(key=n['key'], action='finish', entity=n['entity'],refKey=refs[n['key']],fields=fields,
+                               changes=differences(old, fields) if old and not equivalent(old, fields) else ''))
             continue
         match=resolve(n['match'],refs)
         old=client.find(n['entity'],match)
@@ -210,9 +212,11 @@ def plan(client, profile, options=None):
         expected=checked_fields(n, fields)
         draft_document = n['mode']=='document' and old and not old.get('Posted')
         fill = bool(old and n['mode'] == 'ensure' and not equivalent(old, expected))
-        if old and not draft_document and not equivalent(old,expected) and not (fill and can_fill(old, expected)):
+        if old and not draft_document and not equivalent(old,expected) and not (fill and can_fill(old, expected, update_existing)):
             raise SetupError(n['key']+': существующая запись отличается от профиля; '+differences(old, expected))
-        report.append(dict(key=n['key'],action='fill' if fill else ('reuse' if old else 'create'),entity=n['entity'],refKey=refs[n['key']],fields=fields))
+        action = ('update' if update_existing else 'fill') if fill else ('reuse' if old else 'create')
+        report.append(dict(key=n['key'],action=action,entity=n['entity'],refKey=refs[n['key']],fields=fields,
+                           changes=differences(old, expected) if fill else ''))
     check_initial_area(client, profile, refs, found)
     return refs,report
 
@@ -227,7 +231,7 @@ def apply(client,profile,options=None):
                 e['refKey']=refs[n['target']]
                 actual=client.read(e['entity'],e['refKey'])
                 if not equivalent(actual,fields):
-                    if actual.get(n.get('ownershipField','Описание'))!='BICYCLE_SIMPLE/1.0 OData setup':
+                    if profile.get('updateExistingSettings') is not True and actual.get(n.get('ownershipField','Описание'))!='BICYCLE_SIMPLE/1.0 OData setup':
                         raise SetupError('чужую запись нельзя автоматически менять')
                     client.request(e['entity']+"(guid'"+e['refKey']+"')",'PATCH',fields)
                     if not equivalent(client.read(e['entity'],e['refKey']),fields):raise SetupError('спецификация не прошла сверку')
@@ -238,8 +242,8 @@ def apply(client,profile,options=None):
                 e['refKey']=old['Ref_Key']
                 expected=checked_fields(n, fields)
                 if n['mode']=='ensure' and not equivalent(old, expected):
-                    if not can_fill(old, expected):
-                        raise SetupError('Заполненные значения не перезаписываются: '+differences(old, expected))
+                    if not can_fill(old, expected, profile.get('updateExistingSettings') is True):
+                        raise SetupError('Изменение заполненных реквизитов не разрешено профилем: '+differences(old, expected))
                     client.request(e['entity']+"(guid'"+e['refKey']+"')", 'PATCH', expected)
                 if n['mode']=='document':
                     path=e['entity']+"(guid'"+e['refKey']+"')"

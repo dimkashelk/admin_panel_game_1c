@@ -18,6 +18,9 @@ class ERP:
     def __init__(self):
         self.rows = {}
         self.posts = []
+        self.patches = []
+        self.fail_after_patch = None
+        self.ignore_patch_field = None
         self.fail_after_post = None
         self.foreign_cash = 0
         self.foreign_debt = 0
@@ -101,7 +104,11 @@ class ERP:
                     raise SetupError('Ответ потерян после проведения')
                 return {}
             if method == 'PATCH':
-                row.update(copy.deepcopy(body))
+                self.patches.append((entity, key, copy.deepcopy(body)))
+                row.update({k: copy.deepcopy(v) for k, v in body.items() if k != self.ignore_patch_field})
+                if self.fail_after_patch == entity:
+                    self.fail_after_patch = None
+                    raise SetupError('Ответ потерян после настройки')
                 return {}
             return copy.deepcopy(row)
         if method == 'POST':
@@ -117,6 +124,109 @@ class ERP:
 
 
 class SetupTests(unittest.TestCase):
+    def test_existing_department_is_configured_and_reused_without_duplicates(self):
+        erp = ERP()
+        department = erp.add('Catalog_СтруктураПредприятия', {
+            'Description': 'Цех сборки', 'ПроизводственноеПодразделение': False,
+            'ПодразделениеДиспетчер': False, 'ПроизводствоПоЗаказам': False,
+            'ПроизводствоБезЗаказов': False, 'ИспользоватьПооперационноеУправление': True,
+            'ИспользоватьПооперационноеПланирование': True,
+            'ИнтервалПланирования': 'Неделя', 'Статус': 'НеДействует',
+            'Комментарий': 'Существующий учебный цех'})
+        original = copy.deepcopy(department)
+        _, entries = plan(erp, PROFILE)
+        planned = next(e for e in entries if e['key'] == 'department')
+        self.assertEqual(planned['action'], 'update')
+        self.assertIn('ИспользоватьПооперационноеУправление', planned['changes'])
+        self.assertEqual(erp.read('Catalog_СтруктураПредприятия', department['Ref_Key']), original)
+        self.assertEqual(erp.posts, [])
+        self.assertEqual(erp.patches, [])
+
+        apply(erp, PROFILE)
+        actual = erp.read('Catalog_СтруктураПредприятия', department['Ref_Key'])
+        expected = next(n['fields'] for n in PROFILE['nodes'] if n['key'] == 'department')
+        self.assertEqual({k: actual[k] for k in expected}, expected)
+        self.assertEqual(actual['Комментарий'], original['Комментарий'])
+        self.assertEqual(sum(r['Description'] == 'Цех сборки' for r in erp.rows['Catalog_СтруктураПредприятия']), 1)
+        count = len(erp.posts)
+        patches = len(erp.patches)
+        apply(erp, PROFILE)
+        self.assertEqual(len(erp.posts), count)
+        self.assertEqual(len(erp.patches), patches)
+        _, entries = plan(erp, PROFILE)
+        self.assertEqual(next(e for e in entries if e['key'] == 'department')['action'], 'reuse')
+
+    def test_strict_profile_still_rejects_filled_settings_conflicts(self):
+        erp = ERP()
+        altered = copy.deepcopy(PROFILE)
+        altered['updateExistingSettings'] = False
+        node = next(n for n in altered['nodes'] if n['key'] == 'department')
+        node['fields']['Комментарий'] = 'Новое описание'
+        erp.add('Catalog_СтруктураПредприятия', {'Description': 'Цех сборки',
+            'ИспользоватьПооперационноеУправление': True, 'Комментарий': 'Существующее описание'})
+        with self.assertRaisesRegex(SetupError, 'Комментарий: в ERP'):
+            apply(erp, altered)
+        self.assertEqual(erp.posts, [])
+
+    def test_deleted_department_is_not_updated(self):
+        erp = ERP()
+        department = erp.add('Catalog_СтруктураПредприятия', {
+            'Description': 'Цех сборки', 'ИспользоватьПооперационноеУправление': True})
+        department['DeletionMark'] = True
+        with self.assertRaisesRegex(SetupError, 'помечена на удаление'):
+            apply(erp, PROFILE)
+        self.assertEqual(erp.posts, [])
+
+    def test_all_profile_settings_are_restored_including_unmarked_specs_and_agreements(self):
+        erp = ERP()
+        apply(erp, PROFILE)
+        originals = copy.deepcopy(erp.rows)
+        for entity, rows in erp.rows.items():
+            if not entity.startswith('Catalog_'):
+                continue
+            for row in rows:
+                for name, value in list(row.items()):
+                    if name in ('Ref_Key', 'DeletionMark', 'IsFolder', 'Description', 'Артикул', 'НаименованиеПолное', 'ДатаРегистрации'):
+                        continue
+                    # Leave fields used to identify mandatory classifiers/accounts untouched.
+                    if entity in ('Catalog_БанковскиеСчетаОрганизаций', 'Catalog_ВидыКонтактнойИнформации', 'Catalog_СтавкиНДС'):
+                        continue
+                    if isinstance(value, bool):
+                        row[name] = not value
+                    elif name in ('Описание', 'Комментарий'):
+                        row[name] = 'Ранее настроено вручную'
+                if entity == 'Catalog_СоглашенияСКлиентами':
+                    row['ЭтапыГрафикаОплаты'][0]['ПроцентПлатежа'] = 50
+                if entity == 'Catalog_РесурсныеСпецификации' and not row.get('IsFolder'):
+                    row['МатериалыИУслуги'][0]['КоличествоУпаковок'] = 99
+        before_plan = copy.deepcopy(erp.rows)
+        _, entries = plan(erp, PROFILE)
+        self.assertEqual(erp.rows, before_plan)
+        self.assertTrue(any(e['action'] == 'update' for e in entries))
+        self.assertTrue(any(e['action'] == 'finish' and e['changes'] for e in entries))
+        apply(erp, PROFILE)
+        self.assertEqual(erp.rows, originals)
+
+    def test_configuration_retry_after_lost_patch_response_does_not_duplicate_data(self):
+        erp = ERP()
+        department = erp.add('Catalog_СтруктураПредприятия', {
+            'Description': 'Цех сборки', 'ИспользоватьПооперационноеУправление': True})
+        erp.fail_after_patch = 'Catalog_СтруктураПредприятия'
+        with self.assertRaisesRegex(SetupError, 'Ответ потерян после настройки'):
+            apply(erp, PROFILE)
+        apply(erp, PROFILE)
+        self.assertFalse(erp.read('Catalog_СтруктураПредприятия', department['Ref_Key'])['ИспользоватьПооперационноеУправление'])
+        self.assertEqual(len([r for r in erp.rows['Catalog_СтруктураПредприятия'] if r['Description'] == 'Цех сборки']), 1)
+        self.assertEqual(sum(p[:2] == ('Catalog_СтруктураПредприятия', department['Ref_Key']) for p in erp.patches), 1)
+
+    def test_erp_must_confirm_applied_setting(self):
+        erp = ERP()
+        erp.add('Catalog_СтруктураПредприятия', {
+            'Description': 'Цех сборки', 'ИспользоватьПооперационноеУправление': True})
+        erp.ignore_patch_field = 'ИспользоватьПооперационноеУправление'
+        with self.assertRaisesRegex(SetupError, 'записанные поля отличаются'):
+            apply(erp, PROFILE)
+
     def test_document_customer_and_typical_sales_agreement(self):
         erp = ERP()
         apply(erp, PROFILE)
@@ -140,11 +250,13 @@ class SetupTests(unittest.TestCase):
         self.assertNotEqual(actual['ВидНоменклатуры_Key'], ZERO)
         apply(erp, PROFILE)
 
-    def test_required_item_conflict_reports_actual_expected_before_writes(self):
+    def test_strict_profile_item_conflict_reports_actual_expected_before_writes(self):
         erp = ERP()
+        strict = copy.deepcopy(PROFILE)
+        strict['updateExistingSettings'] = False
         erp.add('Catalog_Номенклатура', {'Description': 'Городской велосипед', 'ТипНоменклатуры': 'Услуга'})
         with self.assertRaisesRegex(SetupError, 'ТипНоменклатуры: в ERP "Услуга"; ожидается "Товар"'):
-            apply(erp, PROFILE)
+            apply(erp, strict)
         self.assertEqual(erp.posts, [])
 
     def test_dry_run_never_writes_or_reuses_proposed_ids_across_bases(self):
