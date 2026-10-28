@@ -117,6 +117,36 @@ class ERP:
 
 
 class SetupTests(unittest.TestCase):
+    def test_document_customer_and_typical_sales_agreement(self):
+        erp = ERP()
+        apply(erp, PROFILE)
+        customer = next(r for r in erp.rows['Catalog_Контрагенты'] if r['Description'] == 'Рынок')
+        self.assertEqual((customer['ИНН'], customer['КПП']), ('7452567895', '715258615'))
+        self.assertEqual(customer['КонтактнаяИнформация'][0]['НомерТелефона'], '89053456585')
+        account = next(r for r in erp.rows['Catalog_БанковскиеСчетаКонтрагентов'] if r['Owner'] == customer['Ref_Key'])
+        self.assertEqual(account['НомерСчета'], '53687456987412552365')
+        agreement = erp.rows['Catalog_СоглашенияСКлиентами'][0]
+        self.assertTrue(agreement['Типовое'])
+        self.assertNotIn('Партнер_Key', agreement)
+
+    def test_existing_item_keeps_arbitrary_article_and_full_name_when_filled(self):
+        erp = ERP()
+        item = erp.add('Catalog_Номенклатура', {'Description': 'Городской велосипед',
+            'Артикул': 'CITY-001', 'НаименованиеПолное': 'Велосипед городской учебный'})
+        apply(erp, PROFILE)
+        actual = erp.read('Catalog_Номенклатура', item['Ref_Key'])
+        self.assertEqual(actual['Артикул'], 'CITY-001')
+        self.assertEqual(actual['НаименованиеПолное'], 'Велосипед городской учебный')
+        self.assertNotEqual(actual['ВидНоменклатуры_Key'], ZERO)
+        apply(erp, PROFILE)
+
+    def test_required_item_conflict_reports_actual_expected_before_writes(self):
+        erp = ERP()
+        erp.add('Catalog_Номенклатура', {'Description': 'Городской велосипед', 'ТипНоменклатуры': 'Услуга'})
+        with self.assertRaisesRegex(SetupError, 'ТипНоменклатуры: в ERP "Услуга"; ожидается "Товар"'):
+            apply(erp, PROFILE)
+        self.assertEqual(erp.posts, [])
+
     def test_dry_run_never_writes_or_reuses_proposed_ids_across_bases(self):
         first, second = ERP(), ERP()
         one, _ = plan(first, PROFILE)

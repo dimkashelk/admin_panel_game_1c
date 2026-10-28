@@ -99,6 +99,26 @@ def equivalent(actual, expected):
     return actual==expected
 
 
+def checked_fields(node, fields):
+    expected = copy.deepcopy(fields)
+    for name in node.get('createOnlyFields', []):
+        expected.pop(name, None)
+    if node['key'].startswith('spec_'):
+        expected.pop('Статус', None)
+    return expected
+
+
+def can_fill(actual, expected):
+    return all(equivalent(actual.get(k), v) or actual.get(k) in (None, '', ZERO)
+               for k, v in expected.items())
+
+
+def differences(actual, expected):
+    return '; '.join(f'{k}: в ERP {json.dumps(actual.get(k), ensure_ascii=False)}; '
+                     f'ожидается {json.dumps(v, ensure_ascii=False)}'
+                     for k, v in expected.items() if not equivalent(actual.get(k), v))
+
+
 def read_all(client, path, params=None):
     result = []
     for offset in range(0, 20000, 100):
@@ -187,11 +207,12 @@ def plan(client, profile, options=None):
         if old and old.get('DeletionMark'):raise SetupError(n['key']+': запись помечена на удаление')
         if not old and n['mode']=='existing':raise SetupError(n['key']+': обязательный классификатор не найден')
         # Draft and active specs are both valid at the skeleton step; the finish step verifies the complete BOM.
-        expected=copy.deepcopy(fields)
-        if n['key'].startswith('spec_'):expected.pop('Статус',None)
+        expected=checked_fields(n, fields)
         draft_document = n['mode']=='document' and old and not old.get('Posted')
-        if old and not draft_document and not equivalent(old,expected):raise SetupError(n['key']+': существующая запись отличается от профиля; исправьте конфликт')
-        report.append(dict(key=n['key'],action='reuse' if old else 'create',entity=n['entity'],refKey=refs[n['key']],fields=fields))
+        fill = bool(old and n['mode'] == 'ensure' and not equivalent(old, expected))
+        if old and not draft_document and not equivalent(old,expected) and not (fill and can_fill(old, expected)):
+            raise SetupError(n['key']+': существующая запись отличается от профиля; '+differences(old, expected))
+        report.append(dict(key=n['key'],action='fill' if fill else ('reuse' if old else 'create'),entity=n['entity'],refKey=refs[n['key']],fields=fields))
     check_initial_area(client, profile, refs, found)
     return refs,report
 
@@ -215,6 +236,11 @@ def apply(client,profile,options=None):
                 if not old:
                     old=client.request(e['entity'],'POST',{'Ref_Key':refs[n['key']],**fields})
                 e['refKey']=old['Ref_Key']
+                expected=checked_fields(n, fields)
+                if n['mode']=='ensure' and not equivalent(old, expected):
+                    if not can_fill(old, expected):
+                        raise SetupError('Заполненные значения не перезаписываются: '+differences(old, expected))
+                    client.request(e['entity']+"(guid'"+e['refKey']+"')", 'PATCH', expected)
                 if n['mode']=='document':
                     path=e['entity']+"(guid'"+e['refKey']+"')"
                     actual=client.read(e['entity'],e['refKey'])
@@ -223,8 +249,6 @@ def apply(client,profile,options=None):
                         if not equivalent(client.read(e['entity'],e['refKey']),fields):raise SetupError('документ не прошёл сверку до проведения')
                         client.request(path+'/Post()','POST')
                     if not client.read(e['entity'],e['refKey']).get('Posted'):raise SetupError('документ не проведён')
-                expected=copy.deepcopy(fields)
-                if n['key'].startswith('spec_'):expected.pop('Статус',None)
                 if not equivalent(client.read(e['entity'],e['refKey']),expected):
                     raise SetupError('записанные поля отличаются от задания')
             refs[n['key']]=e['refKey']
@@ -247,7 +271,8 @@ def main():
     try:
         client=OData(args.url,os.environ.get('ERP_ODATA_USER',''),os.environ.get('ERP_ODATA_PASSWORD',''))
         profile=json.loads((ROOT/'contracts/erp-odata-setup.json').read_text())
-        options={k:v for k,v in [('organizationName',args.organization_name),('setupDate',args.setup_date)] if v is not None}
+        options={k:v for k,v in [('organizationName',args.organization_name),
+                                ('setupDate',args.setup_date or datetime.now().strftime('%Y-%m-%dT00:00:00'))] if v is not None}
         if args.apply:result=apply(client,profile,options)
         else:
             refs,entries=plan(client,profile,options)

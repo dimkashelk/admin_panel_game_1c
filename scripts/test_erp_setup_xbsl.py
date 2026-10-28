@@ -28,7 +28,7 @@ def setup_source():
     odata = (EXCHANGE / 'НастройкаБазOData.xbsl').read_text()
     names = ('Подготовить', 'ПроверитьЧистуюБазу', 'ПроверитьЧистыеРасчеты',
              'ПроверитьНачальныйДолг', 'ЭкспортироватьСсылки', 'НормализоватьАдрес',
-             'ЗапросOData', 'Найти', 'МожноДополнитьНастройку', 'Разрешить', 'Совпадает', 'СоединитьСтроки',
+             'ЗапросOData', 'Найти', 'МожноДополнитьНастройку', 'ПроверяемыеПоляНастройки', 'РасхожденияНастройки', 'Разрешить', 'Совпадает', 'СоединитьСтроки',
              'ПрочитатьВсе', 'ПровестиДокумент')
     profile = method((EXCHANGE / 'ПрофильНастройкиOData.xbsl').read_text(), 'Получить')
     profile = profile.replace('метод Получить(', 'метод ПолучитьПрофиль(')
@@ -50,7 +50,7 @@ DRIVER = r'''
     Требовать(Сверка.Получить("supplierDebt") == "2801800.00", "TEST", "Opening debt mismatch")
     Требовать(Повтор.Получить("fullSetupReady") == Ложь, "TEST", "Partial setup claimed full readiness")
     знч Отчет = ПредставитьОтчет(Повтор)
-    Требовать(Отчет.Содержит("2801800.00") и Отчет.Содержит("18%"), "TEST", "Setup report hides debt or remaining work")
+    Требовать(Отчет.Содержит("2801800.00") и Отчет.Содержит("Схема обеспечения комплектующих"), "TEST", "Setup report hides debt or remaining work")
     знч Третий = Прочитать(Подготовить(Адрес, "test-user", "test-password", Истина))
     Требовать(Третий.Получить("success") == Истина, "TEST", Json(Третий))
     знч ПроверкаГотовой = Прочитать(Подготовить(Адрес, "test-user", "test-password", Ложь))
@@ -69,7 +69,8 @@ def main():
     parser.add_argument('--scenario-stock', choices=('full', 'partial', 'empty'), default='full')
     args = parser.parse_args()
     erp = ERP()
-    erp.add('Catalog_Номенклатура', {'Description': 'Городской велосипед', 'Артикул': '',
+    item = erp.add('Catalog_Номенклатура', {'Description': 'Городской велосипед', 'Артикул': 'CITY-001',
+        'НаименованиеПолное': 'Велосипед городской учебный',
         'ВидНоменклатуры_Key': '00000000-0000-0000-0000-000000000000'})
     erp.fail_after_post = 'Document_ВводОстатков'
     requests = []
@@ -182,6 +183,9 @@ def main():
     for entity in ('Document_ВводОстатковТоваров', 'Document_ВводОстатковДенежныхСредств', 'Document_ВводОстатков'):
         for doc in erp.rows.get(entity, []):
             assert sum(p[1:] == (doc['Ref_Key'], 'Post') for p in erp.posts) == 1, entity
+    saved_item = erp.read('Catalog_Номенклатура', item['Ref_Key'])
+    assert saved_item['Артикул'] == 'CITY-001'
+    assert saved_item['НаименованиеПолное'] == 'Велосипед городской учебный'
     stock = erp.rows.get('Document_ВводОстатковТоваров', [])
     if args.scenario_stock != 'full':
         assert len(erp.rows['Catalog_Номенклатура']) == 15, 'Missing nomenclature without opening stock'
