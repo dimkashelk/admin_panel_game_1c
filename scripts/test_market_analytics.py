@@ -14,14 +14,37 @@ def analytics_source():
     structure = 'структура СтрокаАналитикиРынка\n' + '\n'.join(
         '    пер ' + f['Имя'] + ': ' + f['Тип'] for f in fields) + '\n;'
     protocol = (EXCHANGE / 'ПротоколERP.xbsl').read_text()
+    form = (EXCHANGE.parent / 'Аналитика/АналитикаРынкаФорма.xbsl').read_text()
+    filtering = method(form, 'ПрименитьФильтр').replace(
+        'метод ПрименитьФильтр()',
+        'метод ОтфильтроватьДляТеста(ВсеСтроки: Массив<СтрокаАналитикиРынка>, '
+        'ВыбранныйРаунд: Число?): Массив<СтрокаАналитикиРынка>').replace(
+        '    Строки = Отфильтрованные', '    возврат Отфильтрованные')
     body = '\n'.join([structure, *(method(protocol, n) for n in ('ОбъектJson', 'ЧислоJson', 'СтрокаJson', 'Требовать', 'МассивJson', 'Json', 'Прочитать', 'КаноническийJson')),
-        method(source, 'Собрать'), method(source, 'Факт'),
+        method(source, 'Собрать'), method(source, 'Факт'), filtering, method(form, 'СтрокиСовпадают'),
         method((EXCHANGE / 'РынокЗаказов.xbsl').read_text(), 'СнимокСебестоимости')])
     body = body.replace('Игры.Объект', 'ИграАналитикиТеста').replace('УчастникиИгры.Ссылка', 'КомандаАналитикиТеста')
     body = body.replace('НастройкиERP.ПравилоПродукта(Игра, Код)', '<Строка, Объект?>{"vatRate": Игра.СтавкаНдс}')
     body = body.replace('ОбменERP.Продукт(Код).ЗагрузитьОбъект()!.Наименование', 'Код')
     body = body.replace('ПротоколERP.', '')
     body = re.sub(r'^импорт .+\n|^@[^\n]+\n', '', body, flags=re.M)
+    # Every value, including nullable margin fields, must invalidate an unchanged poll.
+    comparisons = []
+    for field in fields:
+        name, kind = field['Имя'], field['Тип']
+        value = '"changed"' if kind == 'Строка' else '1'
+        comparisons.extend([
+            '    Новые = <СтрокаАналитикиРынка>[новый СтрокаАналитикиРынка()]',
+            f'    Новые[0].{name} = {value}',
+            f'    Проверка(не СтрокиСовпадают(Старые, Новые), "Changed field ignored: {name}")'])
+        if kind.endswith('?'):
+            comparisons.append(
+                f'    Проверка(не СтрокиСовпадают(Новые, Старые), "Missing field ignored: {name}")')
+    body += '\nметод ПроверитьСравнениеПолей()\n' + '\n'.join([
+        '    знч Старые = <СтрокаАналитикиРынка>[новый СтрокаАналитикиРынка()]',
+        '    пер Новые = <СтрокаАналитикиРынка>[новый СтрокаАналитикиРынка()]',
+        '    Проверка(СтрокиСовпадают(Старые, Новые), "Equal values in fresh structures caused a table reset")',
+        *comparisons, ';']) + '\n'
     return 'исключение Ошибка\n    знч Код: Строка\n    знч Поле: Строка\n    знч КодОтвета: Число\n;\n' + body
 
 
@@ -53,6 +76,19 @@ DRIVER = r'''
     знч Итог = Собрать(Продажи, НашИд)
     Проверка(Итог.Размер() == 3 и Итог[0].Раунд == 1 и Итог[2].Раунд == 0,
         "Rounds/models mixed or history not sorted newest first")
+    Проверка(СтрокиСовпадают(Итог, Собрать(Продажи, НашИд)), "Equal polls reset the table")
+    Проверка(не СтрокиСовпадают(Итог, <СтрокаАналитикиРынка>[]), "Deleted rows were ignored")
+    Проверка(не СтрокиСовпадают(<СтрокаАналитикиРынка>[], Итог), "New rows were ignored")
+    Проверка(не СтрокиСовпадают(Итог, <СтрокаАналитикиРынка>[Итог[2], Итог[1], Итог[0]]),
+        "Reordered rows were ignored")
+    Проверка(СтрокиСовпадают(ОтфильтроватьДляТеста(Итог, Неопределено), Итог), "All rounds filter lost rows")
+    Проверка(СтрокиСовпадают(ОтфильтроватьДляТеста(Итог, 0), <СтрокаАналитикиРынка>[Итог[2]]),
+        "Round zero was treated as all rounds")
+    Проверка(СтрокиСовпадают(ОтфильтроватьДляТеста(Итог, 1), <СтрокаАналитикиРынка>[Итог[0], Итог[1]]),
+        "Round selection changed row order or mixed rounds")
+    Проверка(ОтфильтроватьДляТеста(Итог, 99).Пусто()
+        и ОтфильтроватьДляТеста(<СтрокаАналитикиРынка>[], Неопределено).Пусто(), "Empty filter invented rows")
+    ПроверитьСравнениеПолей()
     Проверка(СериализацияJson.ЗаписатьОбъект(Итог) == СериализацияJson.ЗаписатьОбъект(Собрать(Продажи, НашИд)),
         "Identical polls must serialize equally to preserve table source identity")
     знч Строка = Итог[2]
@@ -94,7 +130,7 @@ DRIVER = r'''
     Проверка(ЧислоJson(ОбъектJson(Прочитать(Снимок).Получить("costs")), "CityRide") == 61,
         "Historical order cost changed with live team cache")
     Проверка(СнимокСебестоимости(<Строка, Объект?>{:}) == "", "Legacy cache must preserve unknown cost")
-    Консоль.Записать("PASS: production analytics: empty history, rounds/models, individual team prices, volume-weighted market price, VAT, negative/unknown/partial margins, zero revenue, cancelled sales and immutable cost snapshot")
+    Консоль.Записать("PASS: production analytics: round filters, equal/changed/deleted/reordered polls, every field including null margins, empty history, team prices, weighted market price, VAT, margins, cancelled sales and immutable cost snapshot")
     возврат 0
 ;
 '''

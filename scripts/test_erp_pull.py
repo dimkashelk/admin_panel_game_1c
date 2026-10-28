@@ -85,6 +85,15 @@ def fixtures():
                    mappings=[dict(itemCode=f'Item{i}', refKey=uid(f'item{i}'), characteristicId='',
                                   unitCode='pcs', coefficient='1') for i in range(15)], orders=[], playerFinished=False, allocationReady=False)
     case('state uses ERP credentials without binding', request, True, 'ERPStateRequest')
+    for field, value, valid in (
+        ('documentDate', '2028-02-29', True),
+        ('documentDate', '2026-02-30', False),
+        ('serverTime', '2028-02-29T12:00:00+03:00', True),
+        ('serverTime', '2026-02-30T12:00:00Z', False),
+    ):
+        dated = copy.deepcopy(request)
+        dated['context'][field] = value
+        case(f'calendar validation {field}={value}', dated, valid, 'ERPStateRequest')
     bad = copy.deepcopy(request); bad['context']['bindingId'] = uid('binding')
     case('binding forbidden in outgoing context', bad, False, 'ERPStateRequest')
     bad = copy.deepcopy(request); bad['mappings'].pop()
