@@ -24,6 +24,7 @@
 - [Настройка игры](docs/game-setup.md), [интерфейс](docs/interface.md) и [кабинет игрока](docs/player-cabinet.md).
 - [Алгоритмы рынка](docs/market.md).
 - [Обмен, который инициирует игра](docs/erp-pull.md), [контракт HTTP-сервиса ERP](contracts/erp-pull.openapi.json).
+- [Принятое разделение OData/HTTP и дополнение к ТЗ от 02.11.2026](docs/erp-hybrid-addendum-2026-11-02.md).
 - [История выбора транспорта](docs/integration.md) и [старый входящий HTTP-протокол](docs/erp-http.md).
 - [Подготовка ERP через OData](docs/odata-setup.md).
 - [Диагностика, сверка и результаты](docs/admin-panel.md).

@@ -68,6 +68,15 @@ def pull_openapi(schemas):
     for name, request in [('state', 'ERPStateRequest'), ('commands', 'ERPCommandRequest'), ('ack', 'ERPAcknowledgement')]:
         paths['/' + name] = {'post': {
             'operationId': {'state': 'readERPState', 'commands': 'executeERPCommand', 'ack': 'acknowledgeERPEvents'}[name],
+            'description': {
+                'state': 'Чтение согласованных игровых снимков, готовности и версий фактов. '
+                         'Обычные данные и типовые документы читаются через стандартный OData.',
+                'commands': 'Применение фаз и выполнение операций, не покрытых проверенным OData-путём. '
+                            'Заказ клиента и поддержанная полная оплата/закрытие выполняются Элементом через OData. '
+                            'Расширение не повторяет эти хозяйственные операции по переданным orders.',
+                'ack': 'Подтверждение игровых сообщений после их сохранения в Элементе; '
+                       'потеря квитанции вызывает повторную доставку прежних сообщений.',
+            }[name],
             'parameters': [
                 {'name': 'X-Game-Contract-Version', 'in': 'header', 'required': True,
                  'schema': {'type': 'string', 'const': '1.0'}},
@@ -86,6 +95,9 @@ def pull_openapi(schemas):
         'info': {'title': 'ERP API called by Element', 'version': '1.0',
                  'description': 'Элемент инициирует все запросы. Аутентификация пользователем ERP; '
                                 'bindingId и пользователь приложения Элемента не требуются. '
+                                'Решение от 02.11.2026: доступные данные и проверенные типовые операции — через стандартный OData, '
+                                'остальное — через этот HTTP-сервис. Одна хозяйственная операция имеет один канал исполнения; '
+                                'после ошибки автоматическое переключение канала запрещено. '
                                 'snapshotId в receipt/readiness равен messageId снимка из этого ответа. '
                                 'POST /state только читает данные. Максимум ответа 1 МиБ.'},
         'servers': [{'url': '/hs/game/v1'}],
